@@ -1,0 +1,90 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String     @id @default(cuid())
+  employeeId   String     @unique
+  name         String
+  email        String     @unique
+  password     String
+  role         String     @default("STAFF")
+  department   String
+  isFirstLogin Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  otps         Otp[]
+  documents    Document[] @relation("AuthoredDocuments")
+  readLogs     ReadLog[]
+  replies      Reply[]
+}
+
+model Otp {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code      String
+  type      String
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Document {
+  id          String      @id @default(cuid())
+  title       String
+  content     String
+  priority    String      @default("NORMAL")
+  boardType   String      @default("GLOBAL")
+  targetScope String      @default("FACULTY")
+  targetIds   String      @default("[]")
+  authorId    String
+  author      User        @relation("AuthoredDocuments", fields: [authorId], references: [id], onDelete: Cascade)
+  authorName  String
+  authorRole  String
+  isEdited    Boolean     @default(false)
+  fileUrl     String?
+  fileName    String?
+  fileSize    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  readLogs ReadLog[]
+  replies  Reply[]
+}
+
+model ReadLog {
+  id         String   @id @default(cuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName   String
+  userRole   String
+  readAt     DateTime @default(now())
+
+  @@unique([documentId, userId])
+}
+
+model Reply {
+  id             String   @id @default(cuid())
+  documentId     String
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userName       String
+  userRole       String
+  message        String
+  fileUrl        String?
+  fileName       String?
+  fileSize       String?
+  isLeaveRequest Boolean  @default(false)
+  createdAt      DateTime @default(now())
+}
+
