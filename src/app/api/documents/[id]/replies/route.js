@@ -36,9 +36,10 @@ export async function POST(request, { params }) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'กรุณา login ก่อน' }, { status: 401 });
 
-    const { message, fileName, fileUrl, fileSize, isLeaveRequest } = await request.json();
+    const { message, content, fileName, fileUrl, fileSize, isLeaveRequest } = await request.json();
+    const replyText = message || content;
 
-    if (!message || !message.trim()) {
+    if (!replyText || !replyText.trim()) {
       return NextResponse.json({ error: 'กรุณาพิมพ์ข้อความก่อนส่ง' }, { status: 400 });
     }
 
@@ -48,7 +49,7 @@ export async function POST(request, { params }) {
         userId: user.id,
         userName: user.name,
         userRole: user.role,
-        message: message.trim(),
+        message: replyText.trim(),
         fileName: fileName || null,
         fileUrl: fileUrl || null,
         fileSize: fileSize || null,
@@ -56,7 +57,9 @@ export async function POST(request, { params }) {
       },
     });
 
-    return NextResponse.json({ reply }, { status: 201 });
+    const safeReply = { ...reply, content: reply.message };
+
+    return NextResponse.json({ reply: safeReply }, { status: 201 });
   } catch (error) {
     console.error('[CREATE REPLY ERROR]', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });

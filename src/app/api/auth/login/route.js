@@ -14,13 +14,16 @@ export async function POST(request) {
     }
 
     // ค้นหา user จาก email หรือ employeeId
+    const cleanInput = userId.trim();
     const user = await prisma.user.findFirst({
       where: {
         OR: [
-          { email: { equals: userId.trim(), mode: 'insensitive' } },
-          { employeeId: { equals: userId.trim(), mode: 'insensitive' } },
+          { email: cleanInput.toLowerCase() },
+          { employeeId: cleanInput.toUpperCase() },
+          { email: cleanInput },
+          { employeeId: cleanInput },
         ],
-        password: password, // NOTE: Production ควรใช้ bcrypt
+        password: password,
       },
     });
 

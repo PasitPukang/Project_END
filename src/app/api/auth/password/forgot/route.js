@@ -14,8 +14,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'กรุณากรอก Email' }, { status: 400 });
     }
 
+    const cleanEmail = email.trim().toLowerCase();
     const user = await prisma.user.findFirst({
-      where: { email: { equals: email.trim(), mode: 'insensitive' } },
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { email: email.trim() },
+        ],
+      },
     });
 
     if (!user) {

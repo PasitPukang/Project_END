@@ -79,8 +79,14 @@ export async function POST(request) {
     }
 
     // ตรวจ duplicate email
+    const cleanEmail = email.trim().toLowerCase();
     const exists = await prisma.user.findFirst({
-      where: { email: { equals: email.trim(), mode: 'insensitive' } },
+      where: {
+        OR: [
+          { email: cleanEmail },
+          { email: email.trim() },
+        ],
+      },
     });
     if (exists) {
       return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานในระบบแล้ว' }, { status: 409 });
