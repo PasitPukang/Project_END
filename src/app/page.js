@@ -100,10 +100,6 @@ export default function Home() {
         <LoginPage
           onLoginSubmit={handleLoginSubmit}
           onOpenForgotPassword={() => setIsForgotPassOpen(true)}
-          onQuickLogin={(user) => {
-            setPendingUser(user);
-            setAuthStep('OTP');
-          }}
         />
       )}
 
@@ -146,10 +142,7 @@ export default function Home() {
           {/* Right Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
             {/* Top Header Banner */}
-            <Header
-              currentUser={currentUser}
-              onSwitchUser={(user) => setCurrentUser(user)}
-            />
+            <Header currentUser={currentUser} />
 
             {/* Dynamic View Content */}
             <main className="flex-1 overflow-y-auto">

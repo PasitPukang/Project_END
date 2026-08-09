@@ -1,23 +1,14 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
-import { login, sendOtp, getUsers } from '@/lib/apiClient';
+import { login, sendOtp } from '@/lib/apiClient';
 
-export default function LoginPage({ onLoginSubmit, onOpenForgotPassword, onQuickLogin }) {
+export default function LoginPage({ onLoginSubmit, onOpenForgotPassword }) {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [demoUsers, setDemoUsers] = useState([]);
-
-  useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') {
-      getUsers()
-        .then((users) => setDemoUsers(users.slice(0, 4)))
-        .catch(() => {});
-    }
-  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,23 +31,10 @@ export default function LoginPage({ onLoginSubmit, onOpenForgotPassword, onQuick
     }
   };
 
-  const handleQuickLogin = async (user) => {
-    setIsLoading(true);
-    try {
-      await login(user.email, user.password);
-      await sendOtp(user.id, 'LOGIN_2FA');
-      onQuickLogin(user);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row font-sans bg-white">
 
-      {/* LEFT PANEL: Kasetsart University Branding with exact gradient background */}
+      {/* LEFT PANEL: Kasetsart University Branding */}
       <div 
         className="md:w-[52%] min-h-[280px] md:min-h-screen flex flex-col items-center justify-center p-8 relative overflow-hidden"
         style={{
@@ -111,7 +89,7 @@ export default function LoginPage({ onLoginSubmit, onOpenForgotPassword, onQuick
               </label>
               <input
                 type="text"
-                placeholder="Abc@gmail.com"
+                placeholder="dean.flas@kps.ku.ac.th"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 className="w-full bg-white text-slate-800 text-sm px-3.5 py-2.5 border border-slate-400 rounded-none focus:outline-none focus:border-[#006653] transition-colors"
@@ -170,28 +148,6 @@ export default function LoginPage({ onLoginSubmit, onOpenForgotPassword, onQuick
               {isLoading ? 'กำลังเข้าสู่ระบบ...' : 'LOGIN'}
             </button>
           </form>
-
-          {/* Quick Login for Demo Mode */}
-          {demoUsers.length > 0 && (
-            <div className="mt-8 pt-4 border-t border-slate-100">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2 text-center">
-                ⚡ Quick Demo Login
-              </p>
-              <div className="grid grid-cols-2 gap-1.5">
-                {demoUsers.map((u) => (
-                  <button
-                    key={u.id}
-                    type="button"
-                    disabled={isLoading}
-                    onClick={() => handleQuickLogin(u)}
-                    className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 p-1.5 rounded text-[11px] text-left transition-colors truncate"
-                  >
-                    <span className="font-bold text-[#006653]">[{u.role}]</span> {u.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
         </div>
 

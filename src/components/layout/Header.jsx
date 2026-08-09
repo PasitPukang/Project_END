@@ -1,11 +1,8 @@
 'use client';
 import React from 'react';
-import { Bell, Settings, RefreshCw } from 'lucide-react';
-import { getUsers } from '@/lib/storageService';
+import { Bell, Settings } from 'lucide-react';
 
-export default function Header({ currentUser, onSwitchUser }) {
-  const users = getUsers();
-
+export default function Header({ currentUser }) {
   const getRoleDisplayName = (role, dept, position) => {
     if (position) return position;
     switch (role) {
@@ -29,28 +26,6 @@ export default function Header({ currentUser, onSwitchUser }) {
 
       {/* Right Controls & User Info */}
       <div className="flex items-center gap-6">
-        {/* Quick User Switcher for Demo */}
-        {currentUser && (
-          <div className="hidden lg:flex items-center gap-2 bg-emerald-700/50 px-3 py-1.5 rounded-lg text-xs border border-emerald-400/30">
-            <RefreshCw className="w-3.5 h-3.5 text-emerald-200" />
-            <span className="text-emerald-100 font-medium">สลับผู้ใช้ (FLAS KPS):</span>
-            <select
-              value={currentUser.id}
-              onChange={(e) => {
-                const targetUser = users.find((u) => u.id === e.target.value);
-                if (targetUser && typeof onSwitchUser === 'function') onSwitchUser(targetUser);
-              }}
-              className="bg-emerald-900/80 text-white font-semibold px-2 py-1 rounded border border-emerald-500/40 focus:outline-none cursor-pointer text-xs"
-            >
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  [Tier {u.tierLevel || (u.role === 'ADMIN' ? 1 : u.role === 'DEPT_HEAD' ? 2 : 3)}] {u.name} - {u.positionTitle || u.department}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
         {/* Action Icons */}
         <div className="flex items-center gap-3 border-r border-emerald-400/40 pr-6">
           <button className="p-1.5 hover:bg-emerald-600/50 rounded-full transition-colors relative" title="การแจ้งเตือน">
