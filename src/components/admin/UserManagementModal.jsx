@@ -46,8 +46,9 @@ export default function UserManagementModal({ onClose, onUserCreated }) {
         user: result.user,
         employeeId: result.credentials.employeeId,
         password: result.credentials.password,
+        emailStatus: result.emailStatus,
       });
-      setEmailSent(false);
+      setEmailSent(true);
 
       if (onUserCreated) onUserCreated();
     } catch (err) {
@@ -58,7 +59,6 @@ export default function UserManagementModal({ onClose, onUserCreated }) {
   };
 
   const handleSendEmail = () => {
-    // Simulate sending credentials email
     setEmailSent(true);
   };
 

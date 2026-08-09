@@ -111,14 +111,24 @@ export async function POST(request) {
       },
     });
 
-    console.log(`\n👤 [USER CREATED] ${newUser.name} | ID: ${employeeId} | Pass: ${password}\n`);
+    // 1. Sync User to Supabase
+    const { syncUserToSupabase } = await import('@/lib/supabase');
+    await syncUserToSupabase(newUser);
+
+    // 2. Send Real Email containing Employee ID & Temporary Password
+    const { sendEmployeeCredentialsEmail } = await import('@/lib/emailService');
+    const emailResult = await sendEmployeeCredentialsEmail(newUser.email, newUser.name, employeeId, password);
+
+    console.log(`\n👤 [USER CREATED & EMAIL DISPATCHED] ${newUser.name} | ID: ${employeeId} | Pass: ${password} | Email Sent: ${emailResult.success}\n`);
 
     return NextResponse.json({
       user: newUser,
       credentials: { employeeId, password }, // ส่งกลับเพื่อแสดงบน UI
+      emailStatus: emailResult
     }, { status: 201 });
   } catch (error) {
     console.error('[CREATE USER ERROR]', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });
   }
 }
+

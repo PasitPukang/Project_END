@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit3, LockKeyhole, Paperclip, Send, AtSign, ThumbsUp, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Edit3, LockKeyhole, Paperclip, Send, AtSign, ThumbsUp, MessageCircle, Calendar, Download } from 'lucide-react';
 import { getDocument, getReplies, addReply } from '@/lib/apiClient';
+import { generateGoogleCalendarUrl, downloadIcsFile } from '@/lib/calendarUtils';
 import FullReadTrackingModal from './FullReadTrackingModal';
 
 export default function DocumentDetailModal({ doc, currentUser, onClose, onEditDoc }) {
@@ -84,8 +85,36 @@ export default function DocumentDetailModal({ doc, currentUser, onClose, onEditD
           </h1>
         </div>
 
-        {/* Action Badges & Edit Button */}
-        <div className="flex items-center gap-3">
+        {/* Action Badges, Calendar Sync & Edit Button */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <a
+            href={generateGoogleCalendarUrl({
+              title: `[เอกสารเวียน] ${document.title}`,
+              description: document.content || document.title,
+              startDate: document.createdAt,
+            })}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-emerald-50 hover:bg-emerald-100 text-[#00b074] border border-emerald-200 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+            title="เพิ่มบันทึกกิจกรรมลงใน Google Calendar"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>บันทึกลง Google Calendar</span>
+          </a>
+
+          <button
+            onClick={() => downloadIcsFile({
+              title: `[เอกสารเวียน] ${document.title}`,
+              description: document.content || document.title,
+              startDate: document.createdAt,
+            })}
+            className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+            title="ดาวน์โหลดไฟล์ .ics สำหรับ Outlook / Apple Calendar"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>ดาวน์โหลด .ics</span>
+          </button>
+
           {document.priority === 'VERY_URGENT' && (
             <span className="font-extrabold text-red-600 text-sm">ด่วนที่สุด</span>
           )}

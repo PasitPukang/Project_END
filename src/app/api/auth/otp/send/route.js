@@ -49,12 +49,16 @@ export async function POST(request) {
       },
     });
 
-    // DEV: log OTP ออก console (Production ส่ง Email จริง)
-    console.log(`\n🔑 [OTP - ${type}] User: ${user.email} | Code: ${code} | Expires: ${expiresAt.toISOString()}\n`);
+    // ส่ง Real Email OTP ไปที่อีเมลพนักงาน
+    const { sendOtpEmail } = await import('@/lib/emailService');
+    const emailResult = await sendOtpEmail(user.email, code, type);
+
+    console.log(`\n🔑 [OTP - ${type}] User: ${user.email} | Code: ${code} | Email Sent: ${emailResult.success}\n`);
 
     return NextResponse.json({
       success: true,
-      // ส่ง code กลับในตอน dev เพื่อแสดงบน UI (Demo)
+      emailStatus: emailResult,
+      // ส่ง code กลับในตอน dev หากไม่ได้ใส่ SMTP Credentials (เพื่อทดสอบง่าย)
       ...(process.env.NODE_ENV !== 'production' && { demoCode: code }),
     });
   } catch (error) {

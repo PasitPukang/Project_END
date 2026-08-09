@@ -44,11 +44,16 @@ export async function POST(request) {
       data: { userId: user.id, code, type: 'FORGOT_PASSWORD', expiresAt, isUsed: false },
     });
 
-    console.log(`\n🔑 [FORGOT_PASSWORD OTP] Email: ${user.email} | Code: ${code}\n`);
+    // ส่ง Real Email OTP สำหรับลืมรหัสผ่าน
+    const { sendOtpEmail } = await import('@/lib/emailService');
+    const emailResult = await sendOtpEmail(user.email, code, 'FORGOT_PASSWORD');
+
+    console.log(`\n🔑 [FORGOT_PASSWORD OTP SENT] Email: ${user.email} | Code: ${code} | Email Sent: ${emailResult.success}\n`);
 
     return NextResponse.json({
       success: true,
       userId: user.id,
+      emailStatus: emailResult,
       ...(process.env.NODE_ENV !== 'production' && { demoCode: code }),
     });
   } catch (error) {

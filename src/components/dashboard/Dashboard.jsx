@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Search, SlidersHorizontal, RotateCcw, LockKeyhole, Mail, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, SlidersHorizontal, RotateCcw, LockKeyhole, Mail, FileText, ChevronLeft, ChevronRight, Calendar, Download } from 'lucide-react';
 import { getDocuments } from '@/lib/apiClient';
+import { generateGoogleCalendarUrl, downloadIcsFile } from '@/lib/calendarUtils';
 
 export default function Dashboard({ currentUser, onOpenDocDetail }) {
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, DEPARTMENT, PERSONAL
@@ -144,22 +145,23 @@ export default function Dashboard({ currentUser, onOpenDocDetail }) {
             <thead>
               <tr className="text-xs font-bold text-slate-400 border-b border-slate-100 pb-3">
                 <th className="py-3 px-4 w-32">ความเร่งด่วน</th>
-                <th className="py-3 px-4 w-28">ความลับ</th>
+                <th className="py-3 px-4 w-24">ความลับ</th>
                 <th className="py-3 px-4">หัวข้อ</th>
-                <th className="py-3 px-4 w-56">ผู้ส่ง</th>
-                <th className="py-3 px-4 text-right w-28">วันที่</th>
+                <th className="py-3 px-4 w-48">ผู้ส่ง</th>
+                <th className="py-3 px-4 text-center w-36">บันทึกปฏิทิน</th>
+                <th className="py-3 px-4 text-right w-24">วันที่</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
               {isLoading ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400 animate-pulse text-xs">
+                  <td colSpan={6} className="py-12 text-center text-slate-400 animate-pulse text-xs">
                     กำลังโหลดรายการจดหมายเวียน...
                   </td>
                 </tr>
               ) : filteredDocs.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="py-12 text-center text-slate-400 text-xs font-medium">
+                  <td colSpan={6} className="py-12 text-center text-slate-400 text-xs font-medium">
                     ไม่พบรายการจดหมายเวียน
                   </td>
                 </tr>
@@ -167,16 +169,15 @@ export default function Dashboard({ currentUser, onOpenDocDetail }) {
                 filteredDocs.map((doc) => (
                   <tr
                     key={doc.id}
-                    onClick={() => onOpenDocDetail(doc)}
                     className="table-row-hover cursor-pointer group"
                   >
                     {/* 1. ความเร่งด่วน */}
-                    <td className="py-4 px-4 font-bold">
+                    <td className="py-4 px-4 font-bold" onClick={() => onOpenDocDetail(doc)}>
                       {getUrgencyElement(doc.priority)}
                     </td>
 
                     {/* 2. ความลับ */}
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4" onClick={() => onOpenDocDetail(doc)}>
                       {doc.isConfidential ? (
                         <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600">
                           <LockKeyhole className="w-4 h-4" />
@@ -185,7 +186,7 @@ export default function Dashboard({ currentUser, onOpenDocDetail }) {
                     </td>
 
                     {/* 3. หัวข้อ */}
-                    <td className="py-4 px-4 font-bold text-slate-800 group-hover:text-[#00b074] transition-colors">
+                    <td className="py-4 px-4 font-bold text-slate-800 group-hover:text-[#00b074] transition-colors" onClick={() => onOpenDocDetail(doc)}>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#00b074] flex items-center justify-center shrink-0">
                           <FileText className="w-4 h-4" />
@@ -195,7 +196,7 @@ export default function Dashboard({ currentUser, onOpenDocDetail }) {
                     </td>
 
                     {/* 4. ผู้ส่ง */}
-                    <td className="py-4 px-4">
+                    <td className="py-4 px-4" onClick={() => onOpenDocDetail(doc)}>
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 overflow-hidden flex items-center justify-center font-bold text-xs shrink-0">
                           {doc.authorName ? doc.authorName.substring(0, 2) : 'KU'}
@@ -206,8 +207,40 @@ export default function Dashboard({ currentUser, onOpenDocDetail }) {
                       </div>
                     </td>
 
-                    {/* 5. วันที่ / เวลา */}
-                    <td className="py-4 px-4 text-right font-bold text-slate-800 text-xs">
+                    {/* 5. ปุ่มเพิ่มลง Google Calendar / iCal */}
+                    <td className="py-4 px-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={generateGoogleCalendarUrl({
+                            title: `[เอกสารเวียน] ${doc.title}`,
+                            description: doc.content || doc.title,
+                            startDate: doc.createdAt,
+                          })}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-[#00b074] rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold"
+                          title="เพิ่มลง Google Calendar"
+                        >
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>Google</span>
+                        </a>
+                        <button
+                          onClick={() => downloadIcsFile({
+                            title: `[เอกสารเวียน] ${doc.title}`,
+                            description: doc.content || doc.title,
+                            startDate: doc.createdAt,
+                          })}
+                          className="p-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg transition-colors flex items-center gap-1 text-[11px] font-bold"
+                          title="ดาวน์โหลดไฟล์ .ics สำหรับ Outlook / Apple Calendar"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>iCal</span>
+                        </button>
+                      </div>
+                    </td>
+
+                    {/* 6. วันที่ / เวลา */}
+                    <td className="py-4 px-4 text-right font-bold text-slate-800 text-xs" onClick={() => onOpenDocDetail(doc)}>
                       {formatTimeDisplay(doc.createdAt)}
                     </td>
                   </tr>
