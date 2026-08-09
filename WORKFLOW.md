@@ -1,107 +1,99 @@
 # 🛠️ WORKFLOW: ขั้นตอนการพัฒนาระบบ Loki Task Manager & Document Management System
 
-เอกสารนี้ระบุขั้นตอนการทำงาน (Workflow & Implementation Checklist) ที่เรียงลำดับทีละขั้นตอน เพื่อให้ AI Agent หรือผู้พัฒนาสามารถอ่านและดำเนินงานตามลำดับได้อย่างเป็นระบบ
+เอกสารนี้ระบุสถานะขั้นตอนการทำงาน (Workflow & Implementation Status) ที่ได้รับการอัปเดตล่าสุด
+
+---
+
+## 📊 สรุปภาพรวมสถานะการพัฒนา (Current Development Summary)
+- ✅ **สถานะการทำงาน:** เสร็จสิ้นฟีเจอร์หลักทั้งหมด (MVP Core Features Completed 100%)
+- 🔄 **เทคโนโลยีที่ปรับเปลี่ยนจากแผนเดิม (Technology Stack Adjustments):**
+  - **Framework:** เปลี่ยนจาก `Vite + React` ➔ เป็น `Next.js 14 (App Router)` เพื่อรองรับทั้ง Frontend และ Backend REST API
+  - **Styling:** เปลี่ยนจาก Vanilla CSS ➔ เป็น `Tailwind CSS v3` + `src/app/globals.css`
+  - **Database & Storage:** เปลี่ยนจาก LocalStorage อย่างเดียว ➔ เป็น `Hybrid Architecture` (Prisma ORM + SQLite DB ร่วมกับ LocalStorage Fallback ใน `src/lib/apiClient.js`)
+  - **Folder Structure:** ปรับจาก `src/services/` ➔ ย้ายมาจัดหมวดหมู่ใน `src/lib/` และ `src/app/api/` ตามมาตรฐาน Next.js
 
 ---
 
 ## 📌 Phase 1: การติดตั้งโปรเจกต์และระบบดีไซน์ (Project Initialization & Design System)
-- [ ] **Step 1.1:** สร้างโปรเจกต์ Vite + React ใน `d:\HR_project`
-  * คำสั่ง: `npx -y create-vite@latest ./ --template react`
-- [ ] **Step 1.2:** ติดตั้ง Icon Library (`lucide-react`) และ dependencies ที่จำเป็น
-  * คำสั่ง: `npm install lucide-react`
-- [ ] **Step 1.3:** วางโครงสร้าง CSS Design System ใน `src/index.css`
-  * ออกแบบ Theme (Sleek Dark / Modern Light, Custom Color Tokens, Badges, Typography, Animations, Modals)
+- [x] **Step 1.1:** สร้างโปรเจกต์ (ปรับเปลี่ยนจาก Vite เป็น Next.js 14 App Router) ใน `d:\HR_project`
+- [x] **Step 1.2:** ติดตั้ง Icon Library (`lucide-react`) และ dependencies เช่น `@prisma/client`, `prisma`, `tailwindcss`
+- [x] **Step 1.3:** วางโครงสร้าง CSS Design System ใน `src/app/globals.css` และ `tailwind.config.js`
+  * ออกแบบ Theme (Modern Light/Dark, Custom Tokens, Badges, Typography, Animations, Modals)
 
 ---
 
-## 📌 Phase 2: โครงสร้างข้อมูลและ Mock Database Engine (Data Models & Mock Services)
-- [ ] **Step 2.1:** สร้าง `src/services/mockData.js` กำหนด Seed Data สำหรับทดสอบ 5-10 Personas
-  * Roles: `Admin`, `Department Head (หัวหน้าสาขา)`, `Lecturer (อาจารย์)`, `Staff (เจ้าหน้าที่)`
-  * ตัวอย่าง Users, Departments, Initial Circular Letters, Read Logs
-- [ ] **Step 2.2:** สร้าง `src/services/storageService.js` จัดเก็บข้อมูลลง Browser LocalStorage
-  * ฟังก์ชัน CRUD สำหรับ Users, Documents, Replies, Read Logs
-- [ ] **Step 2.3:** สร้าง `src/services/authService.js` สำหรับจัดการระบบสมาชิก & OTP Engine
-  * ระบบสุ่ม ID (ไม่ซ้ำ), สุ่ม Password อัตโนมัติ
-  * ระบบสร้างและตรวจสอบ OTP (หมดอายุภายใน 2 นาที / 120 วินาที)
+## 📌 Phase 2: โครงสร้างข้อมูลและ Database Engine (Data Models & Services)
+- [x] **Step 2.1:** สร้าง `src/lib/mockDatabase.js` และ `prisma/seed.js` สำหรับ Seed Data (Admin, หัวหน้าสาขา, อาจารย์, เจ้าหน้าที่)
+- [x] **Step 2.2:** สร้าง `src/lib/storageService.js` (LocalStorage CRUD) และ `src/lib/apiClient.js` (เชื่อมต่อ Next.js API Routes + LocalStorage Fallback)
+- [x] **Step 2.3:** สร้างระบบ OTP Engine (OTP 6 หลัก หมดอายุภายใน 2 นาที / 120 วินาที) & Random Password Generation
 
 ---
 
 ## 📌 Phase 3: ระบบยืนยันตัวตนและการเข้าสู่ระบบ (Authentication & 2FA Module)
-- [ ] **Step 3.1:** สร้างส่วนประกอบ `src/components/auth/LoginPage.jsx`
-  * ฟอร์มระบุ ID & Password
-- [ ] **Step 3.2:** สร้างส่วนประกอบ `src/components/auth/OtpModal.jsx`
-  * Modal กรอก OTP 6 หลัก
-  * ตัวนับถอยหลัง Timer 120s (2 นาที)
-  * ปุ่ม Resend OTP เมื่อรหัสหมดอายุ
-- [ ] **Step 3.3:** สร้างส่วนประกอบ `src/components/auth/FirstTimePasswordModal.jsx`
-  * บังคับเปลี่ยนรหัสผ่านทันทีเมื่อล็อกอินบัญชีใหม่ครั้งแรก
-- [ ] **Step 3.4:** สร้างส่วนประกอบ `src/components/auth/ForgotPasswordModal.jsx`
-  * กรอก Email -> ส่ง OTP (2 นาที) -> กรอก OTP -> ตั้ง Password ใหม่
+- [x] **Step 3.1:** `src/components/auth/LoginPage.jsx` (ฟอร์มระบุ ID & Password)
+- [x] **Step 3.2:** `src/components/auth/OtpModal.jsx` (Modal กรอก OTP 6 หลัก, นับถอยหลัง 120s, ปุ่ม Resend OTP)
+- [x] **Step 3.3:** `src/components/auth/FirstTimePasswordModal.jsx` (บังคับเปลี่ยนรหัสผ่านทันทีเมื่อล็อกอินครั้งแรก)
+- [x] **Step 3.4:** `src/components/auth/ForgotPasswordModal.jsx` (กรอก Email -> ส่ง OTP -> ตั้ง Password ใหม่)
+- [x] **[เพิ่มใหม่]:** `src/components/auth/StepWizardLayout.jsx` จัดระเบียบ Flow การล็อกอินให้อ่านง่ายและสวยงาม
 
 ---
 
 ## 📌 Phase 4: ระบบจัดการผู้ใช้งานสำหรับ Admin (User Management Module)
-- [ ] **Step 4.1:** สร้างหน้า `src/components/admin/UserManagement.jsx` (เข้าได้เฉพาะ Admin)
-- [ ] **Step 4.2:** สร้างฟอร์ม "เพิ่มผู้ใช้ใหม่" (Add New User Form)
-  * ระบุชื่อ, นามสกุล, อีเมล, สังกัด/สาขา, เลือก Role
-- [ ] **Step 4.3:** ระบบสุ่ม ID & Password อัตโนมัติ
-- [ ] **Step 4.4:** Pop-up Modal แสดง ID & Password พร้อม "ปุ่มส่งข้อมูล"
-  * แสดงข้อมูลบัญชีที่เพิ่งสร้าง
-  * ปุ่มกดเพื่อจำลองการส่งข้อมูล ID/Password แจ้งเตือนไปยัง Email ของพนักงาน
+- [x] **Step 4.1:** `src/components/admin/UserManagementModal.jsx` & `AdminView.jsx` (เข้าได้เฉพาะ Admin)
+- [x] **Step 4.2:** สร้างฟอร์ม "เพิ่มผู้ใช้ใหม่" (ระบุชื่อ, นามสกุล, อีเมล, สังกัด/สาขา, Role)
+- [x] **Step 4.3:** ระบบสุ่ม ID & Password อัตโนมัติ
+- [x] **Step 4.4:** Pop-up Modal แสดง ID & Password พร้อม "ปุ่มจำลองส่งอีเมลแจ้งเตือน"
+- [x] **[เพิ่มใหม่]:** `src/components/admin/AdminBackendModal.jsx` (ตรวจสอบสถิติระบบและ API Routes)
 
 ---
 
 ## 📌 Phase 5: ระบบกระดานงานและจดหมายเวียน (Task Boards & Circular Letters Module)
-- [ ] **Step 5.1:** สร้างหน้าแดชบอร์ดหลัก `src/components/dashboard/Dashboard.jsx`
-- [ ] **Step 5.2:** สร้างระบบสลับ 3 กระดานงาน (Tab Navigation):
-  1. `กระดานงานรวม (Global Board)` - ประกาศทั่วไปถึงทุกคน
-  2. `กระดานงานฝ่าย (Department Board)` - เอกสารเฉพาะฝ่าย/สาขาตนเอง
-  3. `กระดานงานส่วนตัว (Personal Board)` - เอกสารส่งตรง หรือสร้างเอง
-- [ ] **Step 5.3:** ระบบค้นหาและตัวกรอง (Search & Filter Bar):
-  * ช่องค้นหาด้วยคำค้น (Text Search)
-  * ตัวกรองค้นหาตามช่วงเวลา (วัน/เดือน/ปี - Date Range Filter)
-- [ ] **Step 5.4:** แสดงรายการการ์ดเอกสาร (`DocumentCard.jsx`):
-  * ป้ายระดับความสำคัญ (`ปกติ`, `ด่วน`, `ด่วนที่สุด`)
-  * สถานะการอ่าน: หากยังไม่อ่าน -> **ตัวหนา (Bold)** + สัญลักษณ์ Unread / อ่านแล้ว -> ตัวปกติ
+- [x] **Step 5.1:** หน้าแดชบอร์ดหลัก `src/components/dashboard/Dashboard.jsx`
+- [x] **Step 5.2:** ระบบสลับ 3 กระดานงาน (Global Board, Department Board, Personal Board)
+- [x] **Step 5.3:** ระบบค้นหาคำค้น (Text Search) และตัวกรองช่วงเวลา (Date Range Filter)
+- [x] **Step 5.4:** แสดงการ์ดเอกสาร (`DocumentCard`):
+  * ป้ายระดับความสำคัญ (`ปกติ`, `ด่วน`, `ด่วนที่สุด`, `ลับ`)
+  * สถานะการอ่าน: ยังไม่อ่าน -> **ตัวหนา (Bold)** + สัญลักษณ์ Unread / อ่านแล้ว -> ตัวปกติ
   * สถานะการแก้ไข: แสดงป้าย `(แก้ไขแล้ว)` หากถูกอัปเดต
 
 ---
 
 ## 📌 Phase 6: ระบบสร้างและแก้ไขเอกสารเวียน (Create / Edit Circular Letter Module)
-- [ ] **Step 6.1:** สร้างฟอร์ม `src/components/documents/CreateDocumentModal.jsx`
-  * หัวข้อเรื่อง, เนื้อหาบันทึกข้อความ (Rich Text/Textarea)
-  * เลือกความสำคัญ (ปกติ, ด่วน, ด่วนที่สุด)
-  * อัปโหลดและแนบไฟล์เอกสาร (File Attachment)
-- [ ] **Step 6.2:** การเลือกกลุ่มเป้าหมายผู้รับตามระดับชั้น (Routing Scope):
-  * ส่งรายบุคคล (Individual)
-  * ส่งตามสายงาน/ฝ่าย (Department)
-  * สั่งการตามลำดับขั้น (Hierarchical Order)
-  * เวียนแจ้งทั้งคณะ (Faculty-wide)
-- [ ] **Step 6.3:** ระบบแก้ไขเอกสาร (Edit Document):
-  * ผู้สร้างสามารถแก้ไขรายละเอียดได้ โดยระบบจะติดป้าย `(แก้ไขแล้ว)` อัตโนมัติ
+- [x] **Step 6.1:** สร้างฟอร์ม `src/components/documents/CreateDocumentModal.jsx` (หัวข้อเรื่อง, เนื้อหาบันทึกข้อความ, ระดับความสำคัญ: ปกติ/ด่วน/ด่วนที่สุด/ลับ, อัปโหลดแนบไฟล์)
+- [x] **Step 6.2:** การเลือกกลุ่มเป้าหมายผู้รับ (Routing Scope: Individual, Department, Hierarchical Order, Faculty-wide)
+- [x] **Step 6.3:** ระบบแก้ไขเอกสาร (Edit Document) พร้อมติดป้าย `(แก้ไขแล้ว)` อัตโนมัติ
 
 ---
 
 ## 📌 Phase 7: หน้ารายละเอียดเอกสาร การตอบกลับ และติดตามสถานะ (Document Detail, Reply & Tracking)
-- [ ] **Step 7.1:** สร้างหน้าแสดงรายละเอียดเอกสาร `src/components/documents/DocumentDetailModal.jsx`
-  * แสดงเนื้อหาฉบับเต็ม และปุ่มดาวน์โหลดไฟล์แนบ
-- [ ] **Step 7.2:** ระบบตอบกลับเอกสาร / การลา (Reply & Comment System):
-  * ช่องพิมพ์ข้อความตอบกลับ
-  * ปุ่มอัปโหลดแนบไฟล์ในการตอบกลับ (เช่น ใบลา, รายงาน)
-  * แสดงประวัติการตอบกลับแบบ Timeline
-- [ ] **Step 7.3:** ระบบติดตามสถานะการเปิดอ่าน (Read Status Tracking - เฉพาะผู้สั่งงาน/ผู้ส่ง):
-  * รายชื่อผู้รับทั้งหมด
-  * บันทึก วัน/เดือน/ปี และเวลา ที่ผู้รับแต่ละคนกดเปิดอ่านเอกสาร (Date/Time Stamp)
+- [x] **Step 7.1:** `src/components/documents/DocumentDetailModal.jsx` (แสดงเนื้อหาฉบับเต็ม + ปุ่มดาวน์โหลดไฟล์แนบ)
+- [x] **Step 7.2:** ระบบตอบกลับเอกสาร / การลา (Reply & Comment System) พร้อมแนบไฟล์และ Timeline
+- [x] **Step 7.3:** ระบบติดตามสถานะการเปิดอ่าน `FullReadTrackingModal.jsx` (แสดงรายชื่อผู้รับ + บันทึก วัน/เดือน/ปี เวลา Stamp)
 
 ---
 
 ## 📌 Phase 8: ระบบสิทธิ์การใช้งาน (Role-Based Access Control & UI Scope)
-- [ ] **Step 8.1:** สร้าง `src/context/AuthContext.jsx` ควบคุม State การล็อกอินและ Role ปัจจุบัน
-- [ ] **Step 8.2:** สร้างระบบสลับ Role จำลอง (Role Switcher Toolbar) ใน Header เพื่อให้ทดสอบเปลี่ยนมุมมองระหว่าง `Admin`, `หัวหน้าสาขา`, `อาจารย์`, `เจ้าหน้าที่` ได้สะดวก
-- [ ] **Step 8.3:** ตรวจสอบให้ UI แสดงผลเฉพาะปุ่ม/เมนูตามสิทธิ์ของตำแหน่งนั้นๆ (เช่น เมนูเพิ่มผู้ใช้ใหม่เปิดได้เฉพาะ Admin)
+- [x] **Step 8.1:** ควบคุม State ล็อกอินและ Role ปัจจุบันผ่าน `apiClient.js` / Page State
+- [x] **Step 8.2:** ระบบสลับ Role จำลอง (User/Role Switcher Toolbar) ใน `Header.jsx` สำหรับทดสอบมุมมอง Admin, หัวหน้าสาขา, อาจารย์, เจ้าหน้าที่
+- [x] **Step 8.3:** UI แสดงผลเฉพาะปุ่ม/เมนูตามสิทธิ์ของตำแหน่งนั้นๆ
 
 ---
 
 ## 📌 Phase 9: การสอบทานและส่งมอบงาน (Verification & Testing)
-- [ ] **Step 9.1:** ทดสอบระบบ Build: `npm run build` ต้องสำเร็จโดยไม่มี Syntax/Lint Errors
-- [ ] **Step 9.2:** ทดสอบ Flow ทั้งหมดตั้งแต่ 1) สร้าง User โดย Admin 2) ล็อกอิน 2FA OTP 3) บังคับเปลี่ยน Pass 4) สร้างเอกสารเวียน 5) เปิดอ่าน (ติดตามวันเวลา) 6) ตอบกลับพร้อมแนบไฟล์
+- [x] **Step 9.1:** ทดสอบระบบ Build (`npm run build`) ผ่านสมบูรณ์
+- [x] **Step 9.2:** ทดสอบ Flow ทั้งหมดแบบ End-to-End (สร้าง User -> 2FA OTP -> เปลี่ยน Pass -> สร้างเอกสารเวียน -> เปิดอ่านติดตามเวลา -> ตอบกลับพร้อมแนบไฟล์)
+
+---
+
+## ❌ สิ่งที่ไม่ได้ใช้ / ยกเลิก / ปรับเปลี่ยนแนวทาง (Deprecated & Unused Components)
+1. **🚫 `create-vite` / Pure Client-side SPA:** ไม่ได้ใช้ Vite ตามแผนแรก เปลี่ยนมาใช้ Next.js 14 เพื่อให้ได้ทั้ง SSR และ API Routes ในโปรเจกต์เดียว
+2. **🚫 LocalStorage Pure Engine (`src/services/`):** โครงสร้างไดเรกทอรี `src/services/` เดิมถูกยกเลิก โดยย้ายและปรับปรุงเป็น `src/lib/` และ `src/app/api/` เพื่อแยกแยะ Layer ให้สะอาดขึ้น
+3. **🚫 Vanilla CSS Pure File (`src/index.css`):** ยกเลิกการใช้ไฟล์ CSS แบบเขียนมือล้วน หันมาใช้ Tailwind CSS v3 เพื่อความรวดเร็วและเป็นมาตรฐานในการปรับแต่ง UI
+
+---
+
+## 🚀 สิ่งที่เหลือสำหรับแผนพัฒนาเฟสถัดไป (Future Improvements / Post-MVP Roadmap)
+- [ ] **Real Cloud File Storage:** พัฒนาระบบอัปโหลดไฟล์ไปที่ Cloud Provider จริง (เช่น AWS S3 / Cloudinary) แทนการแปลงเป็น Base64/Blob ในปัจจุบัน
+- [ ] **Real Email / SMS Gateway Integration:** เชื่อมต่อกับบริการส่ง SMS / Email จริง (เช่น Twilio, Resend, SendGrid) เพื่อส่ง OTP และการแจ้งเตือนไปยังผู้ใช้จริง
+- [ ] **Real-time Notification:** เพิ่มระบบ WebSockets / Server-Sent Events (SSE) เพื่อแจ้งเตือนเอกสารด่วน/ลับ เข้ามือถือหรือหน้าจอทันทีแบบ Real-time
+- [ ] **Export & Analytics Reports:** ระบบออกรายงานการเปิดอ่านและสรุปสถิติเอกสารเวียนประจำเดือนในรูปแบบ PDF หรือ Excel
