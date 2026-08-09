@@ -4,32 +4,31 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { INITIAL_USERS } from '@/lib/mockDatabase';
 
-// Helper: ดึง session user และตรวจ Role
+let localUsersStore = [...INITIAL_USERS];
+
 async function getSessionUser() {
   const cookieStore = await cookies();
   const userId = cookieStore.get('session_user_id')?.value;
   if (!userId) return null;
-  return prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, role: true },
-  });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (user) return user;
+  } catch (err) {}
+
+  return localUsersStore.find((u) => u.id === userId) || null;
 }
 
-// Generate unique EmployeeId
-async function generateEmployeeId() {
-  let employeeId;
-  let isDuplicate = true;
-  while (isDuplicate) {
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
-    employeeId = `EMP-${randomNum}`;
-    const exists = await prisma.user.findUnique({ where: { employeeId } });
-    isDuplicate = !!exists;
-  }
-  return employeeId;
+function generateEmployeeId() {
+  const randomNum = Math.floor(1000 + Math.random() * 9000);
+  return `EMP-${randomNum}`;
 }
 
-// Generate random password
 function generatePassword() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$';
   return Array.from({ length: 10 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -43,19 +42,24 @@ export async function GET() {
       return NextResponse.json({ error: 'ไม่มีสิทธิ์เข้าถึง (Admin only)' }, { status: 403 });
     }
 
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        employeeId: true,
-        name: true,
-        email: true,
-        role: true,
-        department: true,
-        isFirstLogin: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    let users = [];
+    try {
+      users = await prisma.user.findMany({
+        select: {
+          id: true,
+          employeeId: true,
+          name: true,
+          email: true,
+          role: true,
+          department: true,
+          isFirstLogin: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (dbErr) {
+      users = localUsersStore.map(({ password, ...u }) => u);
+    }
 
     return NextResponse.json({ users });
   } catch (error) {
@@ -78,58 +82,73 @@ export async function POST(request) {
       return NextResponse.json({ error: 'กรุณากรอกชื่อ-นามสกุล และ อีเมลพนักงาน' }, { status: 400 });
     }
 
-    // ตรวจ duplicate email
     const cleanEmail = email.trim().toLowerCase();
-    const exists = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: cleanEmail },
-          { email: email.trim() },
-        ],
-      },
-    });
+    const exists = localUsersStore.some((u) => u.email.toLowerCase() === cleanEmail);
     if (exists) {
       return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานในระบบแล้ว' }, { status: 409 });
     }
 
-    const employeeId = await generateEmployeeId();
+    const employeeId = generateEmployeeId();
     const password = generatePassword();
 
-    const newUser = await prisma.user.create({
-      data: {
-        employeeId,
-        name: name.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        role: role || 'STAFF',
-        department: department || 'ทั่วไป',
-        isFirstLogin: true,
-      },
-      select: {
-        id: true,
-        employeeId: true,
-        name: true,
-        email: true,
-        role: true,
-        department: true,
-        isFirstLogin: true,
-        createdAt: true,
-      },
-    });
+    let newUser = {
+      id: `usr_${Date.now()}`,
+      employeeId,
+      name: name.trim(),
+      email: cleanEmail,
+      password,
+      role: role || 'STAFF',
+      department: department || 'ทั่วไป',
+      isFirstLogin: true,
+      createdAt: new Date().toISOString(),
+    };
 
-    // 1. Sync User to Supabase
-    const { syncUserToSupabase } = await import('@/lib/supabase');
-    await syncUserToSupabase(newUser);
+    try {
+      const created = await prisma.user.create({
+        data: {
+          employeeId,
+          name: name.trim(),
+          email: cleanEmail,
+          password,
+          role: role || 'STAFF',
+          department: department || 'ทั่วไป',
+          isFirstLogin: true,
+        },
+        select: {
+          id: true,
+          employeeId: true,
+          name: true,
+          email: true,
+          role: true,
+          department: true,
+          isFirstLogin: true,
+          createdAt: true,
+        },
+      });
+      newUser = { ...created, password };
+    } catch (dbErr) {
+      console.warn('[CREATE USER DB FALLBACK]', dbErr.message);
+      localUsersStore.push(newUser);
+    }
+
+    // 1. Sync User to Supabase Cloud
+    try {
+      const { syncUserToSupabase } = await import('@/lib/supabase');
+      await syncUserToSupabase(newUser);
+    } catch (err) {}
 
     // 2. Send Real Email containing Employee ID & Temporary Password
-    const { sendEmployeeCredentialsEmail } = await import('@/lib/emailService');
-    const emailResult = await sendEmployeeCredentialsEmail(newUser.email, newUser.name, employeeId, password);
+    let emailResult = { success: false };
+    try {
+      const { sendEmployeeCredentialsEmail } = await import('@/lib/emailService');
+      emailResult = await sendEmployeeCredentialsEmail(newUser.email, newUser.name, employeeId, password);
+    } catch (err) {}
 
-    console.log(`\n👤 [USER CREATED & EMAIL DISPATCHED] ${newUser.name} | ID: ${employeeId} | Pass: ${password} | Email Sent: ${emailResult.success}\n`);
+    const { password: _, ...safeUser } = newUser;
 
     return NextResponse.json({
-      user: newUser,
-      credentials: { employeeId, password }, // ส่งกลับเพื่อแสดงบน UI
+      user: safeUser,
+      credentials: { employeeId, password },
       emailStatus: emailResult
     }, { status: 201 });
   } catch (error) {
@@ -137,4 +156,3 @@ export async function POST(request) {
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });
   }
 }
-

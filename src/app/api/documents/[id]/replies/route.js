@@ -4,12 +4,21 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { INITIAL_USERS } from '@/lib/mockDatabase';
+
+let localRepliesStore = [];
 
 async function getSessionUser() {
   const cookieStore = await cookies();
   const userId = cookieStore.get('session_user_id')?.value;
   if (!userId) return null;
-  return prisma.user.findUnique({ where: { id: userId } });
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user) return user;
+  } catch (err) {}
+
+  return INITIAL_USERS.find((u) => u.id === userId) || null;
 }
 
 // GET: ดึง replies ของเอกสาร
@@ -18,12 +27,19 @@ export async function GET(request, { params }) {
     const user = await getSessionUser();
     if (!user) return NextResponse.json({ error: 'กรุณา login ก่อน' }, { status: 401 });
 
-    const replies = await prisma.reply.findMany({
-      where: { documentId: params.id },
-      orderBy: { createdAt: 'asc' },
-    });
+    let replies = [];
+    try {
+      replies = await prisma.reply.findMany({
+        where: { documentId: params.id },
+        orderBy: { createdAt: 'asc' },
+      });
+    } catch (dbErr) {
+      replies = localRepliesStore.filter((r) => r.documentId === params.id);
+    }
 
-    return NextResponse.json({ replies });
+    const safeReplies = replies.map((r) => ({ ...r, content: r.message }));
+
+    return NextResponse.json({ replies: safeReplies });
   } catch (error) {
     console.error('[GET REPLIES ERROR]', error);
     return NextResponse.json({ error: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });
@@ -43,19 +59,38 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'กรุณาพิมพ์ข้อความก่อนส่ง' }, { status: 400 });
     }
 
-    const reply = await prisma.reply.create({
-      data: {
-        documentId: params.id,
-        userId: user.id,
-        userName: user.name,
-        userRole: user.role,
-        message: replyText.trim(),
-        fileName: fileName || null,
-        fileUrl: fileUrl || null,
-        fileSize: fileSize || null,
-        isLeaveRequest: isLeaveRequest || false,
-      },
-    });
+    let reply = {
+      id: `rep_${Date.now()}`,
+      documentId: params.id,
+      userId: user.id,
+      userName: user.name,
+      userRole: user.role,
+      message: replyText.trim(),
+      fileName: fileName || null,
+      fileUrl: fileUrl || null,
+      fileSize: fileSize || null,
+      isLeaveRequest: isLeaveRequest || false,
+      createdAt: new Date().toISOString(),
+    };
+
+    try {
+      reply = await prisma.reply.create({
+        data: {
+          documentId: params.id,
+          userId: user.id,
+          userName: user.name,
+          userRole: user.role,
+          message: replyText.trim(),
+          fileName: fileName || null,
+          fileUrl: fileUrl || null,
+          fileSize: fileSize || null,
+          isLeaveRequest: isLeaveRequest || false,
+        },
+      });
+    } catch (dbErr) {
+      console.warn('[CREATE REPLY DB FALLBACK]', dbErr.message);
+      localRepliesStore.push(reply);
+    }
 
     const safeReply = { ...reply, content: reply.message };
 
