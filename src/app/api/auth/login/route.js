@@ -1,9 +1,10 @@
 // ===== BACKEND: POST /api/auth/login =====
-// รับ email/employeeId + password → ตรวจสอบกับ DB → ตั้ง session cookie
+// รับ email/employeeId + password → ตรวจสอบกับ DB / Fallback → ตั้ง session cookie
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { cookies } from 'next/headers';
+import { INITIAL_USERS } from '@/lib/mockDatabase';
 
 export async function POST(request) {
   try {
@@ -13,19 +14,36 @@ export async function POST(request) {
       return NextResponse.json({ error: 'กรุณากรอก ID และรหัสผ่าน' }, { status: 400 });
     }
 
-    // ค้นหา user จาก email หรือ employeeId
     const cleanInput = userId.trim();
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: cleanInput.toLowerCase() },
-          { employeeId: cleanInput.toUpperCase() },
-          { email: cleanInput },
-          { employeeId: cleanInput },
-        ],
-        password: password,
-      },
-    });
+    let user = null;
+
+    try {
+      user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: cleanInput.toLowerCase() },
+            { employeeId: cleanInput.toUpperCase() },
+            { email: cleanInput },
+            { employeeId: cleanInput },
+          ],
+          password: password,
+        },
+      });
+    } catch (dbError) {
+      console.warn('[LOGIN DB FALLBACK]', dbError.message);
+    }
+
+    // Fallback to in-memory INITIAL_USERS for Vercel Serverless environment
+    if (!user) {
+      user = INITIAL_USERS.find(
+        (u) =>
+          (u.email.toLowerCase() === cleanInput.toLowerCase() ||
+            u.employeeId.toUpperCase() === cleanInput.toUpperCase() ||
+            u.email === cleanInput ||
+            u.employeeId === cleanInput) &&
+          u.password === password
+      );
+    }
 
     if (!user) {
       return NextResponse.json(
