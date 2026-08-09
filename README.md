@@ -80,16 +80,17 @@ git push origin feature/your-feature-name
 
 ---
 
-## 🔑 บัญชีสำหรับทดสอบระบบ (Test Accounts & Passwords)
+## 🔑 บัญชีสำหรับทดสอบระบบ (FLAS KPS KU Test Accounts & Secure Passwords)
 
-สามารถใช้บัญชีทดสอบตาม Role ต่างๆ ได้ทันที (ทุกบัญชีรหัสผ่านเริ่มต้นคือ `password123`):
+สามารถใช้บัญชีตามลำดับชั้น 4 Tiers โดยแต่ละบัญชีถูกกำหนดรหัสผ่านความปลอดภัยสูง (High-Entropy Enterprise Password) แยกตามตำแหน่งดังนี้:
 
-| Role | Username / ID | Password | สิทธิ์การใช้งาน |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `admin01` | `password123` | จัดการผู้ใช้ทั้งหมด, ดู API Stats Backend, สร้างเอกสารได้ทุกระดับ |
-| **หัวหน้าสาขา (Department Head)** | `head01` | `password123` | จัดการเอกสารเวียนในฝ่ายตนเอง, สั่งการตามลำดับขั้น, ดูสถิติการอ่าน |
-| **อาจารย์ (Lecturer)** | `lec01` | `password123` | ดูและอ่านเอกสารเวียน, ตอบกลับเอกสาร, แนบใบลา/รายงาน |
-| **เจ้าหน้าที่ (Staff)** | `staff01` | `password123` | อ่านเอกสารทั่วไป, ตอบกลับเอกสารเวียน |
+| Tier / Role | ชื่อ-ตำแหน่ง | Email (ใช้ล็อกอิน) | Employee ID | Secure Password |
+| :--- | :--- | :--- | :--- | :--- |
+| **Tier 1 (Admin)** | รศ.ดร. ธนกฤต ชลพิทักษ์วงศ์ (คณบดี) | `dean.flas@kps.ku.ac.th` | `EMP-D01` | `Flas#Dean2026!kps` |
+| **Tier 1 (Admin)** | ผศ.ดร. อรพินท์ กิจพัฒนา (รองคณบดีฝ่ายวิชาการ) | `vdean.academic@kps.ku.ac.th` | `EMP-VD01` | `Flas#VdeanAcad2026!` |
+| **Tier 2 (Dept Head)** | ผศ.ดร. กิตติศักดิ์ ศรีวิวัฒน์ (หัวหน้าภาค CS/IT) | `head.cs@kps.ku.ac.th` | `EMP-HCS01` | `Flas#HeadCS2026!kps` |
+| **Tier 3 (Lecturer)** | อ. วรวุฒิ สุวรรณโชติ (อาจารย์ CS) | `worawoot.s@kps.ku.ac.th` | `EMP-LCS01` | `Flas#LcsWora2026!kps` |
+| **Tier 4 (Staff)** | คุณ ปรียาภรณ์ สารบรรณดี (เจ้าหน้าที่ธุรการสารบรรณ) | `staff.admin@kps.ku.ac.th` | `EMP-STF01` | `Flas#StaffAdmin2026!` |
 
 ---
 
