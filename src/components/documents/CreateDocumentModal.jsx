@@ -207,67 +207,81 @@ export default function CreateDocumentModal({ currentUser, editDoc, onClose, onD
               </div>
             </div>
 
-            {/* Target Group Selection */}
+            {/* Target Group Selection (FLAS KPS KU Hierarchical Routing) */}
             <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-600">กลุ่มเป้าหมาย</label>
+              <label className="block text-xs font-bold text-slate-600">ขอบเขตการส่งตามลำดับชั้น (Hierarchical Scope)</label>
 
-              {/* Checkbox item 1 */}
+              {/* Scope 1: Faculty-wide */}
               <div
                 onClick={() => setTargetGroup('ALL')}
-                className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                   targetGroup === 'ALL'
                     ? 'border-[#00b074] bg-emerald-50/50'
                     : 'border-slate-200 hover:bg-slate-50'
                 }`}
               >
                 <div>
-                  <div className="font-bold text-slate-800 text-xs">บุคลากรทั้งหมด</div>
-                  <div className="text-[11px] text-slate-400">บุคลากร 2,480 คน</div>
+                  <div className="font-bold text-slate-800 text-xs">🏛️ เวียนแจ้งทั้งคณะศิลปศาสตร์และวิทยาศาสตร์</div>
+                  <div className="text-[11px] text-slate-400">บุคลากรทุกระดับ ( Tier 1 - Tier 4 )</div>
                 </div>
                 <div className={`w-5 h-5 rounded flex items-center justify-center ${targetGroup === 'ALL' ? 'bg-[#00b074] text-white' : 'border border-slate-300'}`}>
                   {targetGroup === 'ALL' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
               </div>
 
-              {/* Checkbox item 2 */}
+              {/* Scope 2: Dept & Division Heads */}
               <div
-                onClick={() => setTargetGroup('EXEC')}
-                className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  targetGroup === 'EXEC'
+                onClick={() => setTargetGroup('DEPT_HEADS')}
+                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  targetGroup === 'DEPT_HEADS'
                     ? 'border-[#00b074] bg-emerald-50/50'
                     : 'border-slate-200 hover:bg-slate-50'
                 }`}
               >
                 <div>
-                  <div className="font-bold text-slate-800 text-xs">เฉพาะผู้บริหาร</div>
-                  <div className="text-[11px] text-slate-400">บุคลากร 142 คน</div>
+                  <div className="font-bold text-slate-800 text-xs">👔 เฉพาะหัวหน้าภาควิชา & หัวหน้างาน (Tier 2)</div>
+                  <div className="text-[11px] text-slate-400">หัวหน้าภาควิชาวิทยาการคอมฯ, เคมี, ชีววิทยา ฯลฯ</div>
                 </div>
-                <div className={`w-5 h-5 rounded flex items-center justify-center ${targetGroup === 'EXEC' ? 'bg-[#00b074] text-white' : 'border border-slate-300'}`}>
-                  {targetGroup === 'EXEC' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                <div className={`w-5 h-5 rounded flex items-center justify-center ${targetGroup === 'DEPT_HEADS' ? 'bg-[#00b074] text-white' : 'border border-slate-300'}`}>
+                  {targetGroup === 'DEPT_HEADS' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
               </div>
 
-              {/* Checkbox item 3 */}
+              {/* Scope 3: Within Department */}
               <div
-                onClick={() => setTargetGroup('REGIONAL')}
-                className={`p-4 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  targetGroup === 'REGIONAL'
+                onClick={() => setTargetGroup('DEPARTMENT')}
+                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  targetGroup === 'DEPARTMENT'
                     ? 'border-[#00b074] bg-emerald-50/50'
                     : 'border-slate-200 hover:bg-slate-50'
                 }`}
               >
                 <div>
-                  <div className="font-bold text-slate-800 text-xs">ผู้อำนวยการภูมิภาค</div>
-                  <div className="text-[11px] text-slate-400">บุคลากร 12 คน</div>
+                  <div className="font-bold text-slate-800 text-xs">📂 สั่งการเฉพาะภายในภาควิชาตนเอง</div>
+                  <div className="text-[11px] text-slate-400">อาจารย์และเจ้าหน้าที่ในสังกัดภาควิชา</div>
                 </div>
-                <div className={`w-5 h-5 rounded flex items-center justify-center ${targetGroup === 'REGIONAL' ? 'bg-[#00b074] text-white' : 'border border-slate-300'}`}>
-                  {targetGroup === 'REGIONAL' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                <div className={`w-5 h-5 rounded flex items-center justify-center ${targetGroup === 'DEPARTMENT' ? 'bg-[#00b074] text-white' : 'border border-slate-300'}`}>
+                  {targetGroup === 'DEPARTMENT' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
               </div>
 
-              <button type="button" className="text-xs font-bold text-[#00b074] hover:underline pt-1">
-                + เลือกกลุ่มเป้าหมายเอง
-              </button>
+              {/* Scope 4: Upward Routing */}
+              <div
+                onClick={() => setTargetGroup('UPWARD')}
+                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                  targetGroup === 'UPWARD'
+                    ? 'border-[#00b074] bg-emerald-50/50'
+                    : 'border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-slate-800 text-xs">⬆️ เสนอบันทึกขึ้นตามลำดับชั้นบังคับบัญชา</div>
+                  <div className="text-[11px] text-slate-400">เสนอเรื่องถึงหัวหน้าภาควิชา ➔ คณบดี</div>
+                </div>
+                <div className={`w-5 h-5 rounded flex items-center justify-center ${targetGroup === 'UPWARD' ? 'bg-[#00b074] text-white' : 'border border-slate-300'}`}>
+                  {targetGroup === 'UPWARD' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                </div>
+              </div>
             </div>
 
             {/* Confidentiality Toggle Switch */}

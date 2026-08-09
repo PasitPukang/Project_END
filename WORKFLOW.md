@@ -6,13 +6,18 @@
 
 ## 📊 สรุปภาพรวมสถานะการพัฒนา (Current Development Summary)
 
-- ✅ **สถานะการทำงาน:** เสร็จสิ้นการเชื่อมต่อระบบจริงเรียบร้อยแล้ว (Real Integration Completed)
-- 🔄 **เทคโนโลยีหลักที่ใช้งานจริง (Real Stack & Integrations):**
+- ✅ **สถานะการทำงาน:** เสร็จสิ้นการจัดทำฐานข้อมูลบุคลากรและระบบส่งเอกสารตามลำดับชั้นเรียบร้อยแล้ว (FLAS KPS KU Database & Hierarchical Routing Completed)
+- 🔄 **เทคโนโลยีหลักและโครงสร้างองค์กรที่ใช้งาน (Real Stack & FLAS KPS KU Integration):**
+  - **Organization Model:** อ้างอิงโครงสร้างบุคลากร **คณะศิลปศาสตร์และวิทยาศาสตร์ มหาวิทยาลัยเกษตรศาสตร์ วิทยาเขตกำแพงแสน (FLAS KPS KU - https://flas.kps.ku.ac.th/)**
+  - **4-Tier Hierarchy Architecture:**
+    - `Tier 1`: ผู้บริหารระดับคณะ (คณบดี, รองคณบดีฝ่ายวิชาการ, ฝ่ายบริหาร ฯลฯ)
+    - `Tier 2`: หัวหน้าภาควิชา & หัวหน้างาน (หัวหน้าภาควิชา CS/IT, วิทยาศาสตร์กายภาพ, ชีววิทยา, สำนักงานเลขานุการคณะ)
+    - `Tier 3`: อาจารย์ประจำภาควิชา (อาจารย์สาขา CS, IT, เคมี ฯลฯ)
+    - `Tier 4`: บุคลากรสายสนับสนุน (เจ้าหน้าที่งานบริหาร/สารบรรณ, การเงินและพัสดุ, บริการการศึกษา)
   - **Framework:** Next.js 14 (App Router) + React 18
-  - **Authentication & User Database:** **Supabase** (`@supabase/supabase-js`) + Prisma ORM (SQLite DB Local Fallback)
-  - **Real Email Gateway:** **Nodemailer / SMTP Transport** (`src/lib/emailService.js`) ส่ง OTP 6 หลัก และส่งข้อมูล Employee ID (`EMP-XXXX`) + Password เข้าอีเมลจริงของพนักงานเมื่อ Admin เพิ่มผู้ใช้ใหม่
-  - **Calendar Integration:** **Google Calendar API Web Link & iCal (.ics Export)** บนการ์ดเอกสารทุกใบในกระดานงานและหน้ารายละเอียดเอกสาร (`src/lib/calendarUtils.js`)
-  - **Styling:** Tailwind CSS v3 + Custom Design Tokens (`src/app/globals.css`)
+  - **Authentication & Database:** **Supabase** (`@supabase/supabase-js`) + Prisma ORM (SQLite Local DB)
+  - **Email Gateway:** Nodemailer Transport ส่ง OTP และส่งข้อมูล Employee ID (`EMP-XXXX`) เข้าอีเมลพนักงานจริง
+  - **Calendar Sync:** Google Calendar API Links & iCal (.ics Export)
 
 ---
 
@@ -25,11 +30,12 @@
 
 ---
 
-## 📌 Phase 2: โครงสร้างข้อมูลและ Database Engine (Data Models & Services)
+## 📌 Phase 2: โครงสร้างข้อมูลบุคลากร FLAS KPS KU (Data Models & Services)
 
-- [x] **Step 2.1:** สร้าง `src/lib/supabase.js` และ `prisma/seed.js` สำหรับจัดการ User Database ทั้งบน Supabase และ Local Database
-- [x] **Step 2.2:** สร้าง `src/lib/storageService.js` (LocalStorage CRUD) และ `src/lib/apiClient.js` (เชื่อมต่อ Next.js API Routes + LocalStorage Fallback)
-- [x] **Step 2.3:** สร้างระบบ OTP Engine (OTP 6 หลัก หมดอายุภายใน 2 นาที / 120 วินาที) & Random Employee ID (`EMP-XXXX`) + Password Generation
+- [x] **Step 2.1:** อัปเดต `prisma/schema.prisma` เพิ่มฟิลด์ `tierLevel`, `positionTitle`, `division` ใน User Model
+- [x] **Step 2.2:** สร้าง `src/lib/mockDatabase.js` และ `prisma/seed.js` บรรจุข้อมูลบุคลากรตัวอย่าง 12 Personas อ้างอิง FLAS KPS KU ครบทั้ง 4 Tiers
+- [x] **Step 2.3:** สร้าง `src/lib/storageService.js` (LocalStorage CRUD) และ `src/lib/apiClient.js` (เชื่อมต่อ Next.js API Routes + LocalStorage Fallback)
+- [x] **Step 2.4:** สร้างระบบ OTP Engine & Random Employee ID (`EMP-XXXX`) Generation
 
 ---
 
@@ -68,10 +74,14 @@
 
 ---
 
-## 📌 Phase 6: ระบบสร้างและแก้ไขเอกสารเวียน (Create / Edit Circular Letter Module)
+## 📌 Phase 6: ระบบสร้างเอกสารตามลำดับชั้นสั่งการ (Create / Edit Circular Letter & Hierarchical Routing)
 
 - [x] **Step 6.1:** สร้างฟอร์ม `src/components/documents/CreateDocumentModal.jsx` (หัวข้อเรื่อง, เนื้อหาบันทึกข้อความ, ระดับความสำคัญ: ปกติ/ด่วน/ด่วนที่สุด/ลับ, อัปโหลดแนบไฟล์)
-- [x] **Step 6.2:** การเลือกกลุ่มเป้าหมายผู้รับ (Routing Scope: Individual, Department, Hierarchical Order, Faculty-wide)
+- [x] **Step 6.2:** **Hierarchical Document Routing:** เลือกขอบเขตการส่งตามลำดับชั้นสั่งการ FLAS KPS KU:
+  - 🏛️ เวียนแจ้งทั้งคณะศิลปศาสตร์และวิทยาศาสตร์ (Faculty-wide)
+  - 👔 เฉพาะหัวหน้าภาควิชา & หัวหน้างาน (Tier 2 Only)
+  - 📂 สั่งการเฉพาะภายในภาควิชาตนเอง (Within Department)
+  - ⬆️ เสนอบันทึกขึ้นตามลำดับชั้นบังคับบัญชา (Upward Routing)
 - [x] **Step 6.3:** ระบบแก้ไขเอกสาร (Edit Document) พร้อมติดป้าย `(แก้ไขแล้ว)` อัตโนมัติ
 
 ---
@@ -85,10 +95,10 @@
 
 ---
 
-## 📌 Phase 8: ระบบสิทธิ์การใช้งาน (Role-Based Access Control & UI Scope)
+## 📌 Phase 8: ระบบสิทธิ์การใช้งานและการสลับ Role/Tier (Role & Tier Switcher)
 
-- [x] **Step 8.1:** ควบคุม State ล็อกอินและ Role ปัจจุบันผ่าน `apiClient.js` / Page State
-- [x] **Step 8.2:** ระบบสลับ Role จำลอง (User/Role Switcher Toolbar) ใน `Header.jsx` สำหรับทดสอบมุมมอง Admin, หัวหน้าสาขา, อาจารย์, เจ้าหน้าที่
+- [x] **Step 8.1:** ควบคุม State ล็อกอินและ Role/Tier ปัจจุบันผ่าน `apiClient.js` / Page State
+- [x] **Step 8.2:** **FLAS KPS Role & Tier Switcher:** อัปเดตเมนูสลับผู้ใช้ใน `Header.jsx` ให้เลือกสลับทดสอบมุมมองระหว่าง คณบดี, รองคณบดี, หัวหน้าภาควิชา CS, หัวหน้าภาควิชา Sci, หัวหน้าสำนักงานเลขานุการ, อาจารย์ประจำ และเจ้าหน้าที่สารบรรณ ได้สะดวก
 - [x] **Step 8.3:** UI แสดงผลเฉพาะปุ่ม/เมนูตามสิทธิ์ของตำแหน่งนั้นๆ
 
 ---
@@ -105,4 +115,4 @@
 
 ## 🛡️ การจัดการ Git Branches (Strict Branching Policy)
 - 🚫 **`main` Branch:** **ห้าม Push ขึ้น `main` โดยเด็ดขาดตามนโยบาย**
-- 🟢 **`develop` & `feature/*` Branches:** งานพัฒนาทั้งหมดถูกบันทึกและ Push ไปยัง branch `develop` และ `feature/notification-system`
+- 🟢 **`develop` & `feature/*` Branches:** งานพัฒนาทั้งหมดถูกบันทึกและ Push ไปยัง branch `develop` และ `feature/hierarchical-routing`

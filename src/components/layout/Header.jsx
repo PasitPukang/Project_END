@@ -6,25 +6,26 @@ import { getUsers } from '@/lib/storageService';
 export default function Header({ currentUser, onSwitchUser }) {
   const users = getUsers();
 
-  const getRoleDisplayName = (role, dept) => {
+  const getRoleDisplayName = (role, dept, position) => {
+    if (position) return position;
     switch (role) {
       case 'ADMIN':
-        return `ผู้ดูแลระบบ (${dept || 'IT'})`;
+        return `ผู้บริหารคณะ (${dept || 'สำนักงานคณบดี'})`;
       case 'DEPT_HEAD':
-        return `หัวหน้าสาขา (${dept || 'วิทยาการคอมพิวเตอร์'})`;
+        return `หัวหน้าภาควิชา/งาน (${dept || 'วิทยาการคอมพิวเตอร์'})`;
       case 'LECTURER':
-        return `อาจารย์ผู้สอน (${dept || 'วิทยาการคอมพิวเตอร์'})`;
+        return `อาจารย์ประจำ (${dept || 'วิทยาการคอมพิวเตอร์'})`;
       case 'STAFF':
-        return `เจ้าหน้าที่ (${dept || 'สารบรรณ'})`;
+        return `เจ้าหน้าที่ (${dept || 'สำนักงานเลขานุการ'})`;
       default:
-        return dept || 'บุคลากร';
+        return dept || 'บุคลากร FLAS KPS';
     }
   };
 
   return (
     <header className="bg-[#00b074] text-white px-8 py-4 flex items-center justify-between shadow-sm select-none">
       {/* Title */}
-      <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+      <h2 className="text-2xl font-bold tracking-tight">FLAS KPS E-Office System</h2>
 
       {/* Right Controls & User Info */}
       <div className="flex items-center gap-6">
@@ -32,18 +33,18 @@ export default function Header({ currentUser, onSwitchUser }) {
         {currentUser && (
           <div className="hidden lg:flex items-center gap-2 bg-emerald-700/50 px-3 py-1.5 rounded-lg text-xs border border-emerald-400/30">
             <RefreshCw className="w-3.5 h-3.5 text-emerald-200" />
-            <span className="text-emerald-100 font-medium">สลับ User:</span>
+            <span className="text-emerald-100 font-medium">สลับผู้ใช้ (FLAS KPS):</span>
             <select
               value={currentUser.id}
               onChange={(e) => {
                 const targetUser = users.find((u) => u.id === e.target.value);
                 if (targetUser && typeof onSwitchUser === 'function') onSwitchUser(targetUser);
               }}
-              className="bg-emerald-900/80 text-white font-semibold px-2 py-1 rounded border border-emerald-500/40 focus:outline-none cursor-pointer"
+              className="bg-emerald-900/80 text-white font-semibold px-2 py-1 rounded border border-emerald-500/40 focus:outline-none cursor-pointer text-xs"
             >
               {users.map((u) => (
                 <option key={u.id} value={u.id}>
-                  [{u.role}] {u.name}
+                  [Tier {u.tierLevel || (u.role === 'ADMIN' ? 1 : u.role === 'DEPT_HEAD' ? 2 : 3)}] {u.name} - {u.positionTitle || u.department}
                 </option>
               ))}
             </select>
@@ -66,7 +67,7 @@ export default function Header({ currentUser, onSwitchUser }) {
           <div className="flex items-center gap-3">
             <div className="text-right">
               <div className="text-xs font-bold text-emerald-100">
-                {getRoleDisplayName(currentUser.role, currentUser.department)}
+                {getRoleDisplayName(currentUser.role, currentUser.department, currentUser.positionTitle)}
               </div>
               <div className="text-sm font-extrabold text-white">
                 {currentUser.name}
