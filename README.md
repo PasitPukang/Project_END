@@ -4,13 +4,18 @@
 
 ---
 
-## 🚀 การติดตั้งและเริ่มต้นใช้งาน (Getting Started)
+## 🚀 การติดตั้งและเริ่มต้นใช้งานสำหรับผู้พัฒนา (Getting Started)
 
-### 1. ดึงซอร์สโค้ด (Clone Repository)
+### 1. ดึงซอร์สโค้ดจาก Branch `develop` (Clone Repository)
+> ⚠️ **สำคัญ:** โค้ดเวอร์ชันล่าสุดที่ใช้ในการพัฒนาจะอยู่ที่ Branch **`develop`** 
+
 ```bash
-git clone https://github.com/PasitPukang/Project_END.git
+# โคลนพร้อมสลับไปที่ branch develop ทันที
+git clone -b develop https://github.com/PasitPukang/Project_END.git
 cd Project_END
 ```
+
+*(หรือหากโคลนแบบปกติมา ให้สลับ branch ด้วย `git checkout develop`)*
 
 ### 2. ติดตั้ง Dependencies
 ```bash
@@ -19,10 +24,13 @@ npm install
 
 ### 3. ตั้งค่า Database & สร้างข้อมูลทดสอบ (Seed Data)
 ```bash
-# สร้างโครงสร้างฐานข้อมูล SQLite
+# สร้าง Prisma Client
+npx prisma generate
+
+# สร้างและปรับปรุงโครงสร้างฐานข้อมูล SQLite
 npx prisma db push
 
-# สรรสร้างข้อมูลทดสอบเริ่มต้น (Seed Users, Documents)
+# สร้างข้อมูลเริ่มต้นสำหรับทดสอบระบบ (Seed Accounts, Sample Documents)
 node prisma/seed.js
 ```
 
