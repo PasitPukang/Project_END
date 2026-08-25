@@ -1,47 +1,121 @@
 'use client';
-import React, { useState } from 'react';
-import { ArrowLeft, Bold, Italic, Underline, List, ListOrdered, Link as LinkIcon, Image as ImageIcon, UploadCloud, Info, Send, Check } from 'lucide-react';
-import { createDocument, updateDocument } from '@/lib/apiClient';
+import React, { useState, useEffect } from 'react';
+import {
+  ArrowLeft,
+  Bold,
+  Italic,
+  Underline,
+  List,
+  ListOrdered,
+  Paperclip,
+  UploadCloud,
+  Send,
+  AlertTriangle,
+  Globe,
+  Building2,
+  UserCheck,
+  CheckSquare,
+  Square,
+  FileText,
+  X,
+  Sparkles,
+} from 'lucide-react';
+import { createDocument, updateDocument, getUsers } from '@/lib/apiClient';
 
 export default function CreateDocumentModal({ currentUser, editDoc, onClose, onDocSaved }) {
   const [title, setTitle] = useState(editDoc ? editDoc.title : '');
   const [content, setContent] = useState(editDoc ? editDoc.content : '');
-  const [priority, setPriority] = useState(editDoc ? editDoc.priority : 'URGENT');
-  const [isConfidential, setIsConfidential] = useState(editDoc ? !!editDoc.isConfidential : false);
-  const [targetGroup, setTargetGroup] = useState('ALL'); // ALL, DEPT_HEADS, DEPARTMENT, UPWARD
-  const [fileName, setFileName] = useState(editDoc ? editDoc.fileName || '' : '');
+  const [priority, setPriority] = useState(editDoc ? editDoc.priority : 'NORMAL');
+  const [boardType, setBoardType] = useState(editDoc ? editDoc.boardType : 'GLOBAL'); // GLOBAL, DEPARTMENT, PERSONAL
+  const [targetDepartment, setTargetDepartment] = useState(
+    editDoc?.targetScope || currentUser?.department || 'ภาควิชาวิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ'
+  );
+  const [selectedRecipientIds, setSelectedRecipientIds] = useState(
+    editDoc?.targetIds ? (Array.isArray(editDoc.targetIds) ? editDoc.targetIds : JSON.parse(editDoc.targetIds || '[]')) : []
+  );
 
+  const [fileName, setFileName] = useState(editDoc ? editDoc.fileName || '' : '');
+  const [fileSize, setFileSize] = useState(editDoc ? editDoc.fileSize || '' : '');
+  const [usersList, setUsersList] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Load personnel list for individual checkboxes
+    (async () => {
+      try {
+        const users = await getUsers();
+        if (users) {
+          // Filter out current user from recipients list
+          setUsersList(users.filter((u) => u.id !== currentUser?.id));
+        }
+      } catch (err) {
+        console.error('Failed to load users for routing:', err);
+      }
+    })();
+  }, [currentUser?.id]);
+
+  const handleToggleRecipient = (userId) => {
+    if (selectedRecipientIds.includes(userId)) {
+      setSelectedRecipientIds(selectedRecipientIds.filter((id) => id !== userId));
+    } else {
+      setSelectedRecipientIds([...selectedRecipientIds, userId]);
+    }
+  };
+
+  const handleSelectAllRecipients = () => {
+    if (selectedRecipientIds.length === usersList.length) {
+      setSelectedRecipientIds([]);
+    } else {
+      setSelectedRecipientIds(usersList.map((u) => u.id));
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      const sizeInMB = (file.size / (1024 * 1024)).toFixed(1);
+      setFileSize(`${sizeInMB} MB`);
+    }
+  };
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setError('');
 
     if (!title.trim()) {
-      setError('กรุณากรอกหัวข้อเรื่องจดหมายเวียน');
+      setError('กรุณาระบุหัวข้อเรื่องจดหมายเวียน');
+      return;
+    }
+    if (!content.trim()) {
+      setError('กรุณาระบุเนื้อหาบันทึกข้อความ');
+      return;
+    }
+
+    if (boardType === 'PERSONAL' && selectedRecipientIds.length === 0) {
+      setError('กรุณาเลือกรายชื่อผู้รับอย่างน้อย 1 ท่านสำหรับส่งรายบุคคล');
       return;
     }
 
     setIsLoading(true);
     try {
+      const payload = {
+        title: title.trim(),
+        content: content.trim(),
+        priority,
+        boardType,
+        targetScope: boardType === 'DEPARTMENT' ? targetDepartment : boardType === 'GLOBAL' ? 'FACULTY' : 'INDIVIDUAL',
+        targetIds: JSON.stringify(selectedRecipientIds),
+        fileName: fileName || null,
+        fileSize: fileSize || null,
+        fileUrl: fileName ? '#' : null,
+      };
+
       if (editDoc) {
-        await updateDocument(editDoc.id, {
-          title: title.trim(),
-          content: content.trim(),
-          priority,
-          isConfidential,
-          fileName,
-        });
+        await updateDocument(editDoc.id, payload);
       } else {
-        await createDocument({
-          title: title.trim(),
-          content: content.trim(),
-          priority,
-          isConfidential,
-          fileName: fileName || 'FLAS_KPS_Circular_Doc.pdf',
-          boardType: 'GLOBAL',
-        });
+        await createDocument(payload);
       }
 
       if (onDocSaved) onDocSaved();
@@ -52,269 +126,227 @@ export default function CreateDocumentModal({ currentUser, editDoc, onClose, onD
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFileName(file.name);
-    }
-  };
-
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 animate-slide-up select-none">
-      {/* Top Action Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white/60 backdrop-blur-md p-5 rounded-3xl border border-slate-200/80 shadow-sm">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6 animate-slide-up select-none">
+      {/* Top Breadcrumb & Actions Bar */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#00b074] hover:underline mb-1.5 cursor-pointer group"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#006653] hover:underline mb-1 cursor-pointer group"
           >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span>กลับสู่หน้าจดหมายเวียนที่ส่งแล้ว</span>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span>กลับสู่หน้ารายการจดหมายเวียน</span>
           </button>
-          <h1 className="text-xl lg:text-2xl font-black text-slate-800 tracking-tight flex items-center gap-2">
-            <span>{editDoc ? 'แก้ไขจดหมายเวียน' : 'สร้างจดหมายเวียนฉบับใหม่'}</span>
-            <span className="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-emerald-100 text-[#00b074]">
-              {currentUser?.department || 'FLAS KPS'}
+          <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <span>{editDoc ? 'แก้ไขบันทึกข้อความ / จดหมายเวียน' : 'สร้างจดหมายเวียนฉบับใหม่'}</span>
+            <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-[#006653]">
+              {currentUser?.department || 'FLAS KPS KU'}
             </span>
           </h1>
-          <p className="text-xs text-slate-400 font-medium mt-0.5">
-            เขียนและส่งประกาศแจ้งเตือนอย่างเป็นทางการของคณะศิลปศาสตร์และวิทยาศาสตร์
-          </p>
         </div>
 
-        {/* Action Buttons: Save Draft & Send */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2.5 rounded-xl font-bold text-xs text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
+            className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 transition-colors"
           >
-            บันทึกร่าง
+            ยกเลิก
           </button>
-
           <button
             type="button"
             onClick={handleSubmit}
             disabled={isLoading}
-            className="bg-[#00b074] hover:bg-[#009663] disabled:opacity-50 text-white px-6 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-emerald-900/30 hover-lift cursor-pointer active:scale-95"
+            className="bg-[#00a86b] hover:bg-[#008f5d] disabled:opacity-50 text-white px-5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-emerald-900/20 cursor-pointer"
           >
-            <Send className="w-4 h-4" />
-            <span>{isLoading ? 'กำลังส่ง...' : 'ส่งจดหมายเวียน'}</span>
+            <Send className="w-3.5 h-3.5" />
+            <span>{isLoading ? 'กำลังส่ง...' : editDoc ? 'บันทึกการแก้ไข' : 'ส่งเวียนแจ้ง'}</span>
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-2xl text-xs font-bold animate-shake">
-          {error}
+        <div className="bg-rose-50 border border-rose-200 text-rose-600 px-4 py-3 rounded-xl text-xs font-bold flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{error}</span>
         </div>
       )}
 
-      {/* Main Grid: Form Left vs Settings Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Column: Form & Drag-Drop Attachment */}
-        <div className="lg:col-span-8 space-y-6">
-          
-          {/* Main Card */}
-          <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-6">
-            
-            {/* Subject Input */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-2">หัวข้อเรื่องจดหมายเวียน</label>
-              <input
-                type="text"
-                placeholder="บันทึกข้อความสั่งการ: กำหนดการประชุมสภาคณะศิลปศาสตร์และวิทยาศาสตร์..."
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-slate-50 text-slate-800 text-sm font-bold px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#00b074] focus:ring-2 focus:ring-emerald-500/20 transition-all"
-              />
-            </div>
-
-            {/* Content Textarea */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-2">เนื้อหาข้อความสั่งการ</label>
-              
-              {/* Toolbar */}
-              <div className="bg-slate-50 rounded-t-2xl border border-slate-200 px-4 py-2 flex items-center gap-4 text-slate-500 border-b-0 text-xs">
-                <button type="button" className="hover:text-slate-800 p-1"><Bold className="w-4 h-4" /></button>
-                <button type="button" className="hover:text-slate-800 p-1"><Italic className="w-4 h-4" /></button>
-                <button type="button" className="hover:text-slate-800 p-1"><Underline className="w-4 h-4" /></button>
-                <div className="h-4 w-px bg-slate-300"></div>
-                <button type="button" className="hover:text-slate-800 p-1"><List className="w-4 h-4" /></button>
-                <button type="button" className="hover:text-slate-800 p-1"><ListOrdered className="w-4 h-4" /></button>
-                <div className="h-4 w-px bg-slate-300"></div>
-                <button type="button" className="hover:text-slate-800 p-1"><LinkIcon className="w-4 h-4" /></button>
-                <button type="button" className="hover:text-slate-800 p-1"><ImageIcon className="w-4 h-4" /></button>
-              </div>
-
-              <textarea
-                rows={10}
-                placeholder="เรียน คณะผู้บริหาร หัวหน้าภาควิชา และหัวหน้างานทุกท่าน..."
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                className="w-full bg-slate-50 text-slate-800 text-xs p-4 rounded-b-2xl border border-slate-200 focus:outline-none focus:border-[#00b074] focus:ring-2 focus:ring-emerald-500/20 leading-relaxed resize-y font-medium"
-              />
-            </div>
-
-          </div>
-
-          {/* Drag & Drop File Upload Box */}
-          <div className="bg-white rounded-3xl p-8 shadow-sm border border-slate-200/80 text-center space-y-4 hover-lift">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-[#00b074] flex items-center justify-center mx-auto border border-emerald-100">
-              <UploadCloud className="w-6 h-6 animate-pulse" />
-            </div>
-
-            <div>
-              <h4 className="font-bold text-slate-800 text-sm">ลากและวางไฟล์เพื่อแนบเอกสาร</h4>
-              <p className="text-xs text-slate-400 mt-1 font-medium">ไฟล์ PDF, DOCX หรือ Excel ขนาดไม่เกิน 25MB ต่อไฟล์</p>
-            </div>
-
-            {fileName && (
-              <div className="bg-emerald-50 text-[#00b074] border border-emerald-200 px-4 py-2 rounded-xl text-xs font-bold inline-block shadow-2xs animate-spring-pop">
-                📎 แนบแล้ว: {fileName}
-              </div>
-            )}
-
-            <div>
-              <label className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-5 py-2.5 rounded-xl cursor-pointer inline-block transition-colors active:scale-95">
-                เลือกไฟล์จากเครื่อง
-                <input type="file" onChange={handleFileChange} className="hidden" />
-              </label>
-            </div>
-          </div>
-
+      {/* Main Form Body */}
+      <div className="bg-white rounded-2xl p-5 sm:p-7 border border-slate-200 shadow-xs space-y-6">
+        {/* Row 1: Title Input */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            หัวข้อเรื่อง / ประกาศจดหมายเวียน <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="text"
+            placeholder="เช่น ขอเชิญเข้าร่วมการประชุมคณะกรรมการประจำคณะฯ ประจำภาคการศึกษา 1/2569"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full bg-slate-50 text-slate-800 text-sm px-4 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-[#006653] focus:bg-white transition-all font-medium"
+          />
         </div>
 
-        {/* Right Column: Settings Sidebar Card */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-6">
-            <h3 className="font-extrabold text-slate-800 text-base border-b border-slate-100 pb-3 flex items-center gap-2">
-              <span>การตั้งค่าการส่ง</span>
-              <span className="text-[10px] bg-slate-100 text-slate-500 font-bold px-2 py-0.5 rounded-full">FLAS KPS</span>
-            </h3>
-
-            {/* Priority Selection */}
-            <div>
-              <label className="block text-xs font-bold text-slate-600 mb-2">ระดับความสำคัญ</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value)}
-                className="w-full bg-slate-50 text-slate-800 font-bold text-xs p-3 rounded-2xl border border-slate-200 focus:outline-none focus:border-[#00b074]"
-              >
-                <option value="URGENT">ด่วน</option>
-                <option value="VERY_URGENT">ด่วนที่สุด</option>
-                <option value="NORMAL">ปกติ</option>
-              </select>
-
-              <div className="flex items-center gap-1.5 text-[11px] text-[#00b074] font-semibold mt-2">
-                <Info className="w-3.5 h-3.5" />
-                <span>จดหมายด่วนจะแจ้งเตือนผู้ใช้ในระบบทันที</span>
-              </div>
+        {/* Row 2: Priority & Routing Scope Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {/* Priority Selection */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              ระดับความสำคัญ (Priority) <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'NORMAL', label: 'ปกติ', color: 'border-emerald-300 text-[#006653] bg-emerald-50/50' },
+                { id: 'URGENT', label: 'ด่วน', color: 'border-amber-300 text-amber-700 bg-amber-50/50' },
+                { id: 'VERY_URGENT', label: 'ด่วนที่สุด', color: 'border-rose-300 text-rose-600 bg-rose-50/50' },
+              ].map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => setPriority(p.id)}
+                  className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                    priority === p.id ? `${p.color} ring-2 ring-emerald-500 ring-offset-1` : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {p.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Target Group Selection */}
-            <div className="space-y-3">
-              <label className="block text-xs font-bold text-slate-600">ขอบเขตการส่งตามลำดับชั้น (Hierarchical Scope)</label>
-
-              {/* Scope 1: Faculty-wide */}
-              <div
-                onClick={() => setTargetGroup('ALL')}
-                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  targetGroup === 'ALL'
-                    ? 'border-[#00b074] bg-emerald-50/70 shadow-2xs'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-slate-800 text-xs">🏛️ เวียนแจ้งทั้งคณะศิลปศาสตร์และวิทยาศาสตร์</div>
-                  <div className="text-[11px] text-slate-400 font-medium">บุคลากรทุกระดับ ( Tier 1 - Tier 4 )</div>
-                </div>
-                <div className={`w-5 h-5 rounded flex items-center justify-center transition-transform ${targetGroup === 'ALL' ? 'bg-[#00b074] text-white scale-105' : 'border border-slate-300'}`}>
-                  {targetGroup === 'ALL' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
-              </div>
-
-              {/* Scope 2: Dept & Division Heads */}
-              <div
-                onClick={() => setTargetGroup('DEPT_HEADS')}
-                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  targetGroup === 'DEPT_HEADS'
-                    ? 'border-[#00b074] bg-emerald-50/70 shadow-2xs'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-slate-800 text-xs">👔 เฉพาะหัวหน้าภาควิชา & หัวหน้างาน (Tier 2)</div>
-                  <div className="text-[11px] text-slate-400 font-medium">หัวหน้าภาควิชาวิทยาการคอมฯ, เคมี, ชีววิทยา ฯลฯ</div>
-                </div>
-                <div className={`w-5 h-5 rounded flex items-center justify-center transition-transform ${targetGroup === 'DEPT_HEADS' ? 'bg-[#00b074] text-white scale-105' : 'border border-slate-300'}`}>
-                  {targetGroup === 'DEPT_HEADS' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
-              </div>
-
-              {/* Scope 3: Within Department */}
-              <div
-                onClick={() => setTargetGroup('DEPARTMENT')}
-                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  targetGroup === 'DEPARTMENT'
-                    ? 'border-[#00b074] bg-emerald-50/70 shadow-2xs'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-slate-800 text-xs">📂 สั่งการเฉพาะภายในภาควิชาตนเอง</div>
-                  <div className="text-[11px] text-slate-400 font-medium">อาจารย์และเจ้าหน้าที่ในสังกัดภาควิชา</div>
-                </div>
-                <div className={`w-5 h-5 rounded flex items-center justify-center transition-transform ${targetGroup === 'DEPARTMENT' ? 'bg-[#00b074] text-white scale-105' : 'border border-slate-300'}`}>
-                  {targetGroup === 'DEPARTMENT' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
-              </div>
-
-              {/* Scope 4: Upward Routing */}
-              <div
-                onClick={() => setTargetGroup('UPWARD')}
-                className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
-                  targetGroup === 'UPWARD'
-                    ? 'border-[#00b074] bg-emerald-50/70 shadow-2xs'
-                    : 'border-slate-200 hover:bg-slate-50'
-                }`}
-              >
-                <div>
-                  <div className="font-bold text-slate-800 text-xs">⬆️ เสนอบันทึกขึ้นตามลำดับชั้นบังคับบัญชา</div>
-                  <div className="text-[11px] text-slate-400 font-medium">เสนอเรื่องถึงหัวหน้าภาควิชา ➔ คณบดี</div>
-                </div>
-                <div className={`w-5 h-5 rounded flex items-center justify-center transition-transform ${targetGroup === 'UPWARD' ? 'bg-[#00b074] text-white scale-105' : 'border border-slate-300'}`}>
-                  {targetGroup === 'UPWARD' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                </div>
-              </div>
+          {/* Board Scope (Routing) */}
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1.5">
+              ขอบเขตการเวียนแจ้ง (Target Audience) <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { id: 'GLOBAL', label: 'เวียนทั้งคณะ', icon: Globe },
+                { id: 'DEPARTMENT', label: 'ส่งในฝ่าย', icon: Building2 },
+                { id: 'PERSONAL', label: 'ส่งรายบุคคล', icon: UserCheck },
+              ].map((b) => {
+                const Icon = b.icon;
+                return (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => setBoardType(b.id)}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                      boardType === b.id
+                        ? 'bg-[#006653] text-white border-[#006653] shadow-xs'
+                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{b.label}</span>
+                  </button>
+                );
+              })}
             </div>
+          </div>
+        </div>
 
-            {/* Confidentiality Toggle Switch */}
-            <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
-              <div>
-                <div className="font-bold text-slate-800 text-xs">ต้องการให้เอกสารเป็นความลับ</div>
-                <div className="text-[10px] text-slate-400 mt-0.5">ผู้รับจะมองเห็นแท็ก "ลับเฉพาะ" บนเอกสาร</div>
-              </div>
-
+        {/* Dynamic Individual Personnel Checkbox Selection (PDF Requirement Page 2) */}
+        {boardType === 'PERSONAL' && (
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 animate-slide-up">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <UserCheck className="w-4 h-4 text-[#006653]" />
+                <span>ติ๊กเลือกรายชื่ออาจารย์และบุคลากรที่ต้องการส่งถึง ({selectedRecipientIds.length}/{usersList.length} ท่าน)</span>
+              </span>
               <button
                 type="button"
-                onClick={() => setIsConfidential(!isConfidential)}
-                className={`w-12 h-6 rounded-full transition-colors relative ${
-                  isConfidential ? 'bg-[#00b074]' : 'bg-slate-300'
-                }`}
+                onClick={handleSelectAllRecipients}
+                className="text-xs text-[#006653] font-bold hover:underline cursor-pointer"
               >
-                <div className={`w-5 h-5 rounded-full bg-white transition-transform absolute top-0.5 ${
-                  isConfidential ? 'left-6' : 'left-0.5'
-                }`} />
+                {selectedRecipientIds.length === usersList.length ? 'ยกเลิกเลือกทั้งหมด' : 'เลือกทั้งหมด'}
               </button>
             </div>
 
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-48 overflow-y-auto pr-1">
+              {usersList.map((user) => {
+                const isSelected = selectedRecipientIds.includes(user.id);
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => handleToggleRecipient(user.id)}
+                    className={`p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
+                      isSelected
+                        ? 'bg-emerald-100/70 border-emerald-400 text-emerald-950 font-bold'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
+                    }`}
+                  >
+                    {isSelected ? (
+                      <CheckSquare className="w-4 h-4 text-[#006653] shrink-0" />
+                    ) : (
+                      <Square className="w-4 h-4 text-slate-300 shrink-0" />
+                    )}
+                    <div className="truncate text-xs">
+                      <div className="truncate">{user.name}</div>
+                      <div className="text-[10px] text-slate-400 font-normal truncate">
+                        {user.positionTitle || user.department}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        )}
+
+        {/* Row 3: Rich Content Textarea */}
+        <div>
+          <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            เนื้อหาบันทึกข้อความ / รายละเอียดคำสั่ง <span className="text-rose-500">*</span>
+          </label>
+          <textarea
+            rows={7}
+            placeholder="พิมพ์เนื้อหาบันทึกข้อความ รายละเอียดการดำเนินงาน หรือคำสั่งเวียนแจ้ง..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            className="w-full bg-slate-50 text-slate-800 text-sm p-4 rounded-xl border border-slate-200 focus:outline-none focus:border-[#006653] focus:bg-white transition-all font-normal leading-relaxed"
+          ></textarea>
         </div>
 
-      </div>
+        {/* Row 4: File Attachment Section (PDF Requirement Page 2) */}
+        <div className="border-t border-slate-100 pt-4">
+          <label className="block text-xs font-bold text-slate-700 mb-1.5">
+            แนบไฟล์เอกสารประกอบ (PDF, Word, Excel, รูปภาพ)
+          </label>
 
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <label className="w-full sm:w-auto px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors border border-slate-200">
+              <UploadCloud className="w-4 h-4 text-[#006653]" />
+              <span>เลือกไฟล์จากเครื่อง</span>
+              <input type="file" onChange={handleFileChange} className="hidden" />
+            </label>
+
+            {fileName ? (
+              <div className="w-full sm:w-auto px-3.5 py-2 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between gap-3 text-xs text-emerald-900">
+                <div className="flex items-center gap-1.5 truncate">
+                  <FileText className="w-4 h-4 text-[#006653] shrink-0" />
+                  <span className="font-bold truncate">{fileName}</span>
+                  {fileSize && <span className="text-slate-400">({fileSize})</span>}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFileName('');
+                    setFileSize('');
+                  }}
+                  className="p-1 hover:bg-emerald-200/60 rounded text-emerald-700 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <span className="text-xs text-slate-400">ยังไม่ได้เลือกไฟล์แนบ</span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

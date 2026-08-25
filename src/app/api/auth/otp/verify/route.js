@@ -1,70 +1,85 @@
 // ===== BACKEND: POST /api/auth/otp/verify =====
-// ตรวจสอบ OTP → ถ้าถูกต้อง ตั้ง session cookie
+// ตรวจสอบ OTP เทียบกับฐานข้อมูลจริง (Strict Verification - No Bypass)
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
 
 export async function POST(request) {
   try {
     const { userId, code, type = 'LOGIN_2FA' } = await request.json();
 
-    const cookieStore = await cookies();
-    const pendingUserId = cookieStore.get('pending_user_id')?.value;
-    const targetUserId = userId || pendingUserId;
-
-    if (!targetUserId || !code) {
-      return NextResponse.json({ error: 'ข้อมูลไม่ครบถ้วน' }, { status: 400 });
+    if (!userId || !code) {
+      return NextResponse.json({ error: 'กรุณากรอกรหัส OTP ให้ครบถ้วน' }, { status: 400 });
     }
 
-    // Master demo bypass (code 123456 or 6 digit code)
-    if (code === '123456' || code.length === 6) {
-      if (type === 'LOGIN_2FA') {
-        await _completeLogin(cookieStore, targetUserId);
-      }
-      return NextResponse.json({ success: true });
-    }
-
+    const cleanCode = code.toString().trim();
     let otp = null;
+
     try {
       otp = await prisma.otp.findFirst({
         where: {
-          userId: targetUserId,
+          userId,
           type,
+          code: cleanCode,
           isUsed: false,
           expiresAt: { gt: new Date() },
-          code,
         },
       });
-    } catch (dbErr) {
-      console.warn('[OTP VERIFY DB FALLBACK]', dbErr.message);
+
+      if (otp) {
+        await prisma.otp.update({
+          where: { id: otp.id },
+          data: { isUsed: true },
+        });
+      }
+    } catch (dbError) {
+      console.warn('[OTP DB Fallback verify]', dbError.message);
     }
 
-    if (otp) {
-      try {
-        await prisma.otp.update({ where: { id: otp.id }, data: { isUsed: true } });
-      } catch (err) {}
+    // In-memory fallback
+    if (!otp && global._inMemoryOtps) {
+      const matchIndex = global._inMemoryOtps.findIndex(
+        (o) =>
+          o.userId === userId &&
+          o.type === type &&
+          o.code === cleanCode &&
+          !o.isUsed &&
+          new Date(o.expiresAt) > new Date()
+      );
+
+      if (matchIndex !== -1) {
+        otp = global._inMemoryOtps[matchIndex];
+        global._inMemoryOtps[matchIndex].isUsed = true;
+      }
     }
 
-    // ถ้าเป็น LOGIN_2FA → สร้าง session
+    if (!otp) {
+      return NextResponse.json(
+        { error: 'รหัส OTP ไม่ถูกต้อง หรือหมดอายุการใช้งานแล้ว กรุณากดขอรหัสใหม่' },
+        { status: 400 }
+      );
+    }
+
+    const response = NextResponse.json({
+      success: true,
+      message: 'ยืนยันรหัส OTP ถูกต้องเรียบร้อย',
+    });
+
+    // ตั้ง Cookie สำหรับเข้าใช้งาน
     if (type === 'LOGIN_2FA') {
-      await _completeLogin(cookieStore, targetUserId);
+      response.cookies.delete('pending_user_id');
+      response.cookies.set('session_user_id', userId, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 8, // 8 ชั่วโมง
+        path: '/',
+      });
     }
 
-    return NextResponse.json({ success: true });
+    return response;
   } catch (error) {
     console.error('[OTP VERIFY ERROR]', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });
+    return NextResponse.json({ error: 'เกิดข้อผิดพลาดในการตรวจสอบรหัส OTP' }, { status: 500 });
   }
-}
-
-async function _completeLogin(cookieStore, userId) {
-  cookieStore.delete('pending_user_id');
-  cookieStore.set('session_user_id', userId, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 8, // 8 ชั่วโมง
-    path: '/',
-  });
 }

@@ -1,30 +1,53 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Edit3, Trash2, LockKeyhole, Paperclip, Send, AtSign, Calendar, Download, CheckCircle2, ShieldCheck, Clock } from 'lucide-react';
+import {
+  ArrowLeft,
+  Calendar,
+  CalendarPlus,
+  Download,
+  FileText,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  User,
+  Building2,
+  Globe,
+  MessageSquare,
+  Send,
+  Paperclip,
+  UploadCloud,
+  Edit3,
+  Trash2,
+  Eye,
+  ShieldCheck,
+  PlaneTakeoff,
+  X,
+} from 'lucide-react';
 import { getDocument, getReplies, addReply, deleteDocument } from '@/lib/apiClient';
 import { generateGoogleCalendarUrl, downloadIcsFile } from '@/lib/calendarUtils';
-import FullReadTrackingModal from './FullReadTrackingModal';
 
-export default function DocumentDetailModal({ doc, currentUser, onClose, onEditDoc }) {
+export default function DocumentDetailModal({ doc, currentUser, onClose, onEditDoc, onDocDeleted }) {
   const [document, setDocument] = useState(doc);
   const [replies, setReplies] = useState([]);
-  const [newReplyText, setNewReplyText] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isFullTrackingOpen, setIsFullTrackingOpen] = useState(false);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [replyFile, setReplyFile] = useState(null);
+  const [isLeaveRequest, setIsLeaveRequest] = useState(false);
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeSubTab, setActiveSubTab] = useState('REPLIES'); // REPLIES, READ_LOGS
 
   useEffect(() => {
     if (doc?.id) {
-      loadDocumentDetails(doc.id);
+      loadDocumentAndReplies(doc.id);
     }
   }, [doc?.id]);
 
-  const loadDocumentDetails = async (docId) => {
+  const loadDocumentAndReplies = async (docId) => {
     try {
       const updatedDoc = await getDocument(docId);
-      setDocument(updatedDoc);
-      const docReplies = await getReplies(docId);
-      setReplies(docReplies || []);
+      if (updatedDoc) setDocument(updatedDoc);
+      const resReplies = await getReplies(docId);
+      if (resReplies) setReplies(resReplies);
     } catch (err) {
       console.error('Failed to load document details:', err);
     }
@@ -32,25 +55,35 @@ export default function DocumentDetailModal({ doc, currentUser, onClose, onEditD
 
   const handleSendReply = async (e) => {
     e.preventDefault();
-    if (!newReplyText.trim() || isSubmitting) return;
+    if (!replyMessage.trim() && !replyFile) return;
 
-    setIsSubmitting(true);
+    setIsSubmittingReply(true);
     try {
-      const added = await addReply(document.id, { content: newReplyText.trim() });
-      setReplies([...replies, added]);
-      setNewReplyText('');
+      const newRep = await addReply(document.id, {
+        message: replyMessage.trim(),
+        isLeaveRequest,
+        fileName: replyFile ? replyFile.name : null,
+        fileSize: replyFile ? `${(replyFile.size / (1024 * 1024)).toFixed(1)} MB` : null,
+        fileUrl: replyFile ? '#' : null,
+      });
+
+      setReplies((prev) => [...prev, newRep]);
+      setReplyMessage('');
+      setReplyFile(null);
+      setIsLeaveRequest(false);
     } catch (err) {
-      console.error('Failed to send reply:', err);
+      alert(err.message || 'เกิดข้อผิดพลาดในการส่งข้อความตอบกลับ');
     } finally {
-      setIsSubmitting(false);
+      setIsSubmittingReply(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('คุณต้องการลบเอกสารนี้ใช่หรือไม่? (คำเตือน: การลบไม่สามารถย้อนกลับได้)')) return;
+    if (!window.confirm('คุณต้องการลบเอกสารนี้ใช่หรือไม่? ข้อมูลจะถูกลบออกจากระบบ')) return;
     setIsDeleting(true);
     try {
       await deleteDocument(document.id);
+      if (onDocDeleted) onDocDeleted();
       onClose();
     } catch (err) {
       alert(err.message || 'เกิดข้อผิดพลาดในการลบเอกสาร');
@@ -59,360 +92,343 @@ export default function DocumentDetailModal({ doc, currentUser, onClose, onEditD
     }
   };
 
-  const recipients = document?.readLogs?.length
-    ? document.readLogs.map((l) => ({
-        name: l.userName || 'พนักงาน',
-        role: l.userRole || 'เจ้าหน้าที่',
-        isRead: true,
-        readAt: new Date(l.readAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }),
-      }))
-    : [
-        { name: 'รศ.ดร. ธนกฤต ชลพิทักษ์วงศ์', role: 'คณบดี FLAS KPS', isRead: true, readAt: '10:42 AM' },
-        { name: 'ผศ.ดร. กิตติศักดิ์ ศรีวิวัฒน์', role: 'หัวหน้าภาควิชา CS/IT', isRead: true, readAt: '11:15 AM' },
-        { name: 'อ. วรวุฒิ สุวรรณโชติ', role: 'อาจารย์ประจำภาค CS', isRead: true, readAt: '01:05 PM' },
-        { name: 'คุณ ปรียาภรณ์ สารบรรณดี', role: 'เจ้าหน้าที่ธุรการสารบรรณ', isRead: false, readAt: '--:--' },
-      ];
-
-  const readCount = recipients.filter((r) => r.isRead).length;
-  const readPercentage = Math.round((readCount / recipients.length) * 100);
-
   const isAuthorOrAdmin =
     currentUser?.role === 'ADMIN' || currentUser?.id === document?.authorId;
 
+  const calendarUrl = generateGoogleCalendarUrl(document);
+
+  const formatThaiDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }) + ' ' + date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) + ' น.';
+  };
+
   return (
-    <div className="p-6 md:p-8 max-w-7xl mx-auto space-y-6 animate-slide-up select-none">
-      
-      {/* Executive Workflow Step Indicator Header */}
-      <div className="bg-white/90 backdrop-blur-md p-4 px-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-          <ShieldCheck className="w-4 h-4 text-[#00b074]" />
-          <span>ลำดับขั้นตอนการดำเนินการบันทึกข้อความ (FLAS KPS Workflow)</span>
-        </div>
-
-        <div className="flex items-center gap-2 text-xs font-bold">
-          <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" /> 1. ออกบันทึกข้อความ
-          </span>
-          <span className="text-slate-300">➔</span>
-          <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
-            <CheckCircle2 className="w-3.5 h-3.5" /> 2. หัวหน้าภาคพิจารณา
-          </span>
-          <span className="text-slate-300">➔</span>
-          <span className="flex items-center gap-1 text-[#00b074] bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300 animate-pulse">
-            <Clock className="w-3.5 h-3.5" /> 3. คณบดีอนุมัติเวียนแจ้ง
-          </span>
-        </div>
-      </div>
-
-      {/* Top Bar: Back Link & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+    <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto space-y-6 animate-slide-up select-none">
+      {/* Top Header & Breadcrumb */}
+      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#00b074] hover:underline mb-2 cursor-pointer group"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-[#006653] hover:underline mb-1 cursor-pointer group"
           >
-            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-            <span>กลับสู่หน้าจดหมายเวียนที่ส่งแล้ว</span>
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span>กลับสู่หน้ารายการจดหมายเวียน</span>
           </button>
-          <h1 className="text-xl lg:text-2xl font-black text-slate-800 tracking-tight">
-            {document.title}
+          <h1 className="text-lg sm:text-xl font-bold text-slate-800 tracking-tight flex items-center gap-2">
+            <span>รายละเอียดบันทึกข้อความ / จดหมายเวียน</span>
+            {document?.isEdited && (
+              <span className="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 border border-amber-200">
+                (แก้ไขแล้ว)
+              </span>
+            )}
           </h1>
         </div>
 
-        {/* Action Badges, Calendar Sync & Edit Button */}
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Action Controls */}
+        <div className="flex items-center gap-2">
+          {/* Add to Google Calendar */}
           <a
-            href={generateGoogleCalendarUrl({
-              title: `[เอกสารเวียน] ${document.title}`,
-              description: document.content || document.title,
-              startDate: document.createdAt,
-            })}
+            href={calendarUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="bg-emerald-50 hover:bg-emerald-100 text-[#00b074] border border-emerald-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
-            title="เพิ่มบันทึกกิจกรรมลงใน Google Calendar"
+            className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-[#006653] border border-emerald-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+            title="เพิ่มลงใน Google Calendar"
           >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Google Calendar</span>
+            <CalendarPlus className="w-4 h-4 text-emerald-600" />
+            <span>Add to Calendar</span>
           </a>
 
-          <button
-            onClick={() => downloadIcsFile({
-              title: `[เอกสารเวียน] ${document.title}`,
-              description: document.content || document.title,
-              startDate: document.createdAt,
-            })}
-            className="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-2xs"
-            title="ดาวน์โหลดไฟล์ .ics สำหรับ Outlook / Apple Calendar"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>iCal (.ics)</span>
-          </button>
-
-          {document.priority === 'VERY_URGENT' && (
-            <span className="font-extrabold text-rose-600 text-xs bg-rose-50 border border-rose-200 px-3 py-1.5 rounded-full">ด่วนที่สุด</span>
-          )}
-          {document.priority === 'URGENT' && (
-            <span className="font-extrabold text-amber-600 text-xs bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">ด่วน</span>
-          )}
-          {document.isConfidential && (
-            <span className="flex items-center gap-1 font-bold text-slate-700 text-xs bg-slate-100 border border-slate-200 px-3 py-1.5 rounded-full">
-              <LockKeyhole className="w-3.5 h-3.5" /> ความลับ
-            </span>
-          )}
-
+          {/* Edit Button (For Author / Admin) */}
           {isAuthorOrAdmin && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => onEditDoc(document)}
-                className="bg-[#00b074] hover:bg-[#009663] text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>แก้ไข</span>
-              </button>
+            <button
+              onClick={() => onEditDoc(document)}
+              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors cursor-pointer"
+              title="แก้ไขเอกสาร"
+            >
+              <Edit3 className="w-4 h-4" />
+            </button>
+          )}
 
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="bg-rose-500 hover:bg-rose-600 text-white px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
-                title="ลบเอกสาร"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{isDeleting ? 'กำลังลบ...' : 'ลบ'}</span>
-              </button>
-            </div>
+          {/* Delete Button (For Author / Admin) */}
+          {isAuthorOrAdmin && (
+            <button
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
+              title="ลบเอกสาร"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
           )}
         </div>
       </div>
 
-      {/* Main Grid: Left Document Content vs Right Read Tracking Sidebar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Column: Ref Header, Body Content & Attachment Box */}
-        <div className="lg:col-span-8 space-y-6">
-          <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-6">
-            
-            {/* Meta Ref ID Card Header */}
-            <div className="bg-slate-50 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 border border-slate-200/60 text-xs">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-[#00b074] flex items-center justify-center font-black text-sm border border-emerald-200 shadow-2xs">
-                  📄
-                </div>
-                <div>
-                  <div className="font-bold text-slate-800">ข้อมูลเอกสารคำสั่งการ</div>
-                  <div className="text-slate-400 font-mono text-[11px]">Ref ID: {document.id || 'EOP-FLAS-2026-001'}</div>
-                </div>
-              </div>
-
-              <div className="text-right">
-                <div className="text-slate-400 text-[11px]">วันที่ออกจดหมาย</div>
-                <div className="font-bold text-slate-800">
-                  {new Date(document.createdAt).toLocaleDateString('th-TH', { year: 'numeric', month: 'long', day: 'numeric' })}
-                </div>
-              </div>
-
-              <div className="text-right border-l border-slate-200 pl-4">
-                <div className="text-slate-400 text-[11px]">ผู้รับผิดชอบออกบันทึก</div>
-                <div className="font-bold text-[#00b074]">{document.authorName || 'สำนักงานคณบดี'}</div>
-              </div>
-            </div>
-
-            {/* Document Body Content */}
-            <div className="prose prose-slate max-w-none text-slate-700 text-sm leading-relaxed space-y-4 pt-2">
-              <p className="font-bold text-slate-800">เรียน คณะผู้บริหาร หัวหน้าภาควิชา และบุคลากรคณะศิลปศาสตร์และวิทยาศาสตร์ มหาวิทยาลัยเกษตรศาสตร์</p>
-
-              <div className="bg-emerald-50/50 p-4 rounded-2xl border border-emerald-200/60 text-slate-800 font-medium">
-                {document.content || `บันทึกข้อความสั่งการและแจ้งเวียนกำหนดการประชุมสภาคณะศิลปศาสตร์และวิทยาศาสตร์ ประจำปี 2569`}
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <p className="font-bold text-slate-800">วัตถุประสงค์และแนวทางปฏิบัติตามคำสั่ง</p>
-                <ul className="list-disc pl-5 space-y-1.5 text-slate-600 font-medium">
-                  <li>ให้หัวหน้าภาควิชาและหัวหน้างานส่งรายชื่อตัวแทนเข้าร่วมประชุมสภาคณะฯ ภายในวันศุกร์นี้</li>
-                  <li>ขอความร่วมมือบุคลากรสายวิชาการและสายสนับสนุนตรวจสอบระเบียบวาระการประชุมล่วงหน้า</li>
-                  <li>ผลการดำเนินงานจะถูกบันทึกเข้าระบบ E-OFFICE + เพื่อติดตามผลการปฏิบัติตามลำดับชั้น</li>
-                </ul>
-              </div>
-            </div>
-
-            {/* Attachment Box Card */}
-            {document.fileName ? (
-              <div className="pt-4 border-t border-slate-100">
-                <div className="bg-slate-50 hover:bg-slate-100/80 p-4 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-4 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 text-[#00b074] flex items-center justify-center font-bold">
-                      <Paperclip className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <div className="font-bold text-[#00b074] text-xs">{document.fileName}</div>
-                      <div className="text-[11px] text-slate-400">เอกสารแนบประกอบคำสั่งการ (PDF)</div>
-                    </div>
-                  </div>
-
-                  <span className="bg-emerald-100 text-[#00b074] text-xs font-bold px-3 py-1 rounded-full">
-                    แนบแล้ว
-                  </span>
-                </div>
-              </div>
-            ) : null}
-
-          </div>
-        </div>
-
-        {/* Right Column: Read Tracking Sidebar */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200/80 space-y-5">
-            
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2 font-bold text-slate-800 text-sm">
-                <span>📊 บันทึกการเปิดอ่าน</span>
-              </div>
-              <span className="text-xs font-bold text-slate-500">
-                อ่านแล้ว <strong className="text-[#00b074] font-extrabold">{readPercentage}%</strong>
+      {/* Main Document Details Card */}
+      <div className="bg-white rounded-2xl p-5 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+        {/* Document Header Badges & Author Metadata */}
+        <div className="space-y-3 pb-6 border-b border-slate-100">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Priority Badge */}
+            {document?.priority === 'VERY_URGENT' && (
+              <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-rose-50 text-rose-600 border border-rose-200">
+                ด่วนที่สุด
               </span>
-            </div>
+            )}
+            {document?.priority === 'URGENT' && (
+              <span className="px-2.5 py-0.5 rounded-md text-xs font-bold bg-amber-50 text-amber-700 border border-amber-300">
+                ด่วน
+              </span>
+            )}
+            {document?.priority === 'NORMAL' && (
+              <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-[#006653] border border-emerald-200">
+                ปกติ
+              </span>
+            )}
 
-            {/* Sub-Header Columns */}
-            <div className="flex items-center justify-between text-[11px] font-bold text-slate-400 px-1">
-              <span>ผู้รับ</span>
-              <span>สถานะการอ่าน</span>
-            </div>
+            {/* Scope Badge */}
+            <span className="px-2.5 py-0.5 rounded-md text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1">
+              {document?.boardType === 'GLOBAL' && <Globe className="w-3 h-3 text-[#006653]" />}
+              {document?.boardType === 'DEPARTMENT' && <Building2 className="w-3 h-3 text-sky-600" />}
+              {document?.boardType === 'PERSONAL' && <User className="w-3 h-3 text-purple-600" />}
+              <span>
+                {document?.boardType === 'GLOBAL' ? 'เวียนทั้งคณะ' : document?.boardType === 'DEPARTMENT' ? 'ส่งตามสายงานฝ่าย' : 'ส่งรายบุคคล'}
+              </span>
+            </span>
+          </div>
 
-            {/* Recipient List */}
-            <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
-              {recipients.slice(0, 5).map((r, i) => (
-                <div key={i} className="flex items-center justify-between gap-2 py-1">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#00b074] font-bold text-xs flex items-center justify-center shrink-0">
-                      {r.name.substring(0, 2)}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="font-bold text-slate-800 text-xs truncate">{r.name}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{r.role}</div>
-                    </div>
-                  </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 leading-snug">
+            {document?.title}
+          </h2>
 
-                  <div className="shrink-0 text-right">
-                    {r.isRead ? (
-                      <div>
-                        <span className="bg-emerald-100 text-[#00b074] text-[10px] font-bold px-2 py-0.5 rounded">
-                          อ่านแล้ว
-                        </span>
-                        <div className="text-[9px] text-slate-400 mt-0.5">{r.readAt}</div>
-                      </div>
-                    ) : (
-                      <div>
-                        <span className="bg-slate-100 text-slate-400 text-[10px] font-bold px-2 py-0.5 rounded">
-                          ยังไม่อ่าน
-                        </span>
-                        <div className="text-[9px] text-slate-400 mt-0.5">--:--</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Action Link */}
-            <div className="pt-2 text-center border-t border-slate-100">
-              <button
-                onClick={() => setIsFullTrackingOpen(true)}
-                className="text-xs font-bold text-[#00b074] hover:underline"
-              >
-                ดูสถิติการเปิดอ่านทั้งหมด
-              </button>
-            </div>
-
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs text-slate-500 pt-1">
+            <span>
+              ผู้ส่ง: <strong className="text-slate-800">{document?.authorName}</strong> ({document?.authorRole})
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-slate-400" />
+              {formatThaiDate(document?.createdAt)}
+            </span>
+            <span>•</span>
+            <span className="flex items-center gap-1 text-[#006653] font-semibold">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+              รับทราบแล้ว {document?.readLogs?.length || 0} ท่าน
+            </span>
           </div>
         </div>
 
-      </div>
-
-      {/* Bottom Reply / Comment Section */}
-      <div className="bg-white rounded-3xl p-6 lg:p-8 shadow-sm border border-slate-200/80 space-y-6">
-        <h3 className="text-base font-extrabold text-slate-800 flex items-center gap-2">
-          <span>↩️</span> ส่งข้อความตอบรับหรือรายงานผลการปฏิบัติตามสั่งการ
-        </h3>
-
-        {/* Existing Comments Timeline */}
-        <div className="space-y-4">
-          {replies.length === 0 ? (
-            <div className="bg-slate-50 p-4 rounded-2xl text-slate-600 text-xs space-y-3 border border-slate-200/60">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#00b074] overflow-hidden shrink-0 flex items-center justify-center font-bold text-xs">
-                  CS
-                </div>
-                <div>
-                  <div className="font-bold text-slate-800 text-xs">ผศ.ดร. กิตติศักดิ์ ศรีวิวัฒน์ (หัวหน้าภาค CS/IT)</div>
-                  <div className="text-[10px] text-slate-400">10 นาทีที่แล้ว</div>
-                </div>
-              </div>
-              <p className="pl-10 text-xs text-slate-700 font-medium">
-                รับทราบและแจ้งอาจารย์ประจำภาควิชาวิทยาการคอมพิวเตอร์เข้าประชุมสภาคณะฯ เรียบร้อยครับ
-              </p>
-            </div>
-          ) : (
-            replies.map((reply) => (
-              <div key={reply.id} className="bg-slate-50 p-4 rounded-2xl text-slate-600 text-xs space-y-2 border border-slate-200/60">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 text-[#00b074] font-bold text-xs flex items-center justify-center shrink-0">
-                    {reply.userName?.substring(0, 2) || 'KU'}
-                  </div>
-                  <div>
-                    <div className="font-bold text-slate-800 text-xs">{reply.userName}</div>
-                    <div className="text-[10px] text-slate-400">
-                      {new Date(reply.createdAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </div>
-                </div>
-                <p className="pl-10 text-xs text-slate-700 font-medium">{reply.content}</p>
-              </div>
-            ))
-          )}
+        {/* Document Body Content */}
+        <div className="text-slate-800 text-sm leading-relaxed whitespace-pre-wrap font-normal p-4 bg-slate-50/70 rounded-2xl border border-slate-100">
+          {document?.content}
         </div>
 
-        {/* Comment Input Box */}
-        <form onSubmit={handleSendReply} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
-          <textarea
-            rows={3}
-            value={newReplyText}
-            onChange={(e) => setNewReplyText(e.target.value)}
-            placeholder="พิมพ์ข้อความรายงานผลการปฏิบัติหรือตอบรับเอกสารที่นี่..."
-            className="w-full bg-transparent text-slate-800 text-xs focus:outline-none resize-none placeholder:text-slate-400 font-medium"
-          />
-
-          <div className="flex items-center justify-between pt-2 border-t border-slate-200/80">
-            <div className="flex items-center gap-3 text-slate-400">
-              <button type="button" className="hover:text-slate-600 p-1" title="@ กล่าวถึง">
-                <AtSign className="w-4 h-4" />
-              </button>
-              <button type="button" className="hover:text-slate-600 p-1" title="แนบไฟล์">
-                <Paperclip className="w-4 h-4" />
-              </button>
+        {/* Attachment Card (If attached) */}
+        {document?.fileName && (
+          <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/80 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#006653] text-white flex items-center justify-center font-bold">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-slate-800 block truncate">
+                  {document.fileName}
+                </span>
+                <span className="text-[11px] text-slate-400">
+                  {document.fileSize || '1.5 MB'} • เอกสารแนบอย่างเป็นทางการ
+                </span>
+              </div>
             </div>
 
             <button
-              type="submit"
-              disabled={isSubmitting || !newReplyText.trim()}
-              className="bg-[#00b074] hover:bg-[#009663] disabled:opacity-50 text-white px-4 py-2 rounded-xl transition-all font-bold text-xs flex items-center gap-1.5 shadow-sm cursor-pointer"
+              type="button"
+              onClick={() => alert(`จำลองการดาวน์โหลดไฟล์: ${document.fileName}`)}
+              className="px-4 py-2 bg-[#006653] hover:bg-[#004d3d] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
             >
-              <Send className="w-3.5 h-3.5" />
-              <span>{isSubmitting ? 'กำลังส่ง...' : 'ส่งคำตอบรับ'}</span>
+              <Download className="w-3.5 h-3.5" />
+              <span>ดาวน์โหลด</span>
             </button>
           </div>
-        </form>
-
+        )}
       </div>
 
-      {/* Full Read Tracking Modal */}
-      {isFullTrackingOpen && (
-        <FullReadTrackingModal
-          onClose={() => setIsFullTrackingOpen(false)}
-          readLogs={document.readLogs}
-        />
-      )}
+      {/* Sub-Section: Tab Navigation (Replies vs Read Receipts Tracking) */}
+      <div className="bg-white rounded-2xl p-5 sm:p-7 border border-slate-200 shadow-xs space-y-5">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveSubTab('REPLIES')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'REPLIES'
+                  ? 'bg-[#006653] text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              ข้อความตอบกลับ / ส่งงาน ({replies.length})
+            </button>
+            <button
+              onClick={() => setActiveSubTab('READ_LOGS')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSubTab === 'READ_LOGS'
+                  ? 'bg-[#006653] text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              ประวัติการเปิดอ่าน / ยืนยันรับทราบ ({document?.readLogs?.length || 0})
+            </button>
+          </div>
+        </div>
 
+        {/* TAB 1: REPLIES & TASK SUBMISSION */}
+        {activeSubTab === 'REPLIES' && (
+          <div className="space-y-4">
+            {/* List of Replies */}
+            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+              {replies.length === 0 ? (
+                <div className="text-center py-6 text-xs text-slate-400">
+                  <MessageSquare className="w-8 h-8 mx-auto text-slate-300 mb-1.5" />
+                  <span>ยังไม่มีข้อความตอบกลับหรือการส่งงานสำหรับจดหมายเวียนฉบับนี้</span>
+                </div>
+              ) : (
+                replies.map((rep) => (
+                  <div
+                    key={rep.id}
+                    className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/70 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-800">{rep.userName}</span>
+                        <span className="text-[11px] px-1.5 py-0.2 rounded bg-slate-200 text-slate-600">
+                          {rep.userRole}
+                        </span>
+                        {rep.isLeaveRequest && (
+                          <span className="text-[10px] font-bold bg-amber-100 text-amber-800 px-2 py-0.2 rounded-full border border-amber-200 flex items-center gap-1">
+                            <PlaneTakeoff className="w-3 h-3" />
+                            <span>ยื่นคำขอลา</span>
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-400">
+                        {formatThaiDate(rep.createdAt)}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      {rep.message}
+                    </p>
+
+                    {rep.fileName && (
+                      <div className="inline-flex items-center gap-1.5 text-xs text-emerald-800 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200 mt-1">
+                        <Paperclip className="w-3 h-3" />
+                        <span>{rep.fileName}</span>
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Post Reply Form */}
+            <form onSubmit={handleSendReply} className="pt-3 border-t border-slate-100 space-y-3">
+              <div>
+                <textarea
+                  rows={3}
+                  placeholder="พิมพ์ข้อความตอบกลับ ส่งรายงาน หรือชี้แจงความคืบหน้า..."
+                  value={replyMessage}
+                  onChange={(e) => setReplyMessage(e.target.value)}
+                  className="w-full bg-slate-50 text-slate-800 text-xs sm:text-sm p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-[#006653] focus:bg-white"
+                ></textarea>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-4">
+                  {/* Leave Request Checkbox */}
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isLeaveRequest}
+                      onChange={(e) => setIsLeaveRequest(e.target.checked)}
+                      className="rounded text-[#006653] focus:ring-[#006653]"
+                    />
+                    <span>ยื่นคำขอลา (Leave Request)</span>
+                  </label>
+
+                  {/* Attachment Button */}
+                  <label className="text-xs font-semibold text-[#006653] hover:underline flex items-center gap-1 cursor-pointer">
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>{replyFile ? replyFile.name : 'แนบไฟล์งาน'}</span>
+                    <input
+                      type="file"
+                      onChange={(e) => setReplyFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmittingReply || (!replyMessage.trim() && !replyFile)}
+                  className="px-4 py-2 bg-[#00a86b] hover:bg-[#008f5d] disabled:opacity-50 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isSubmittingReply ? 'กำลังส่ง...' : 'ส่งคำตอบกลับ'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* TAB 2: READ RECEIPTS / TRACKING TABLE (PDF Requirement Page 3) */}
+        {activeSubTab === 'READ_LOGS' && (
+          <div className="space-y-3">
+            <p className="text-xs text-slate-500 font-medium">
+              ระบบบันทึกเวลาที่ผู้รับเปิดอ่านเอกสารเพื่อยืนยันว่ารับทราบข้อความและคำสั่งเวียนแจ้งแล้ว
+            </p>
+
+            <div className="overflow-x-auto border border-slate-200 rounded-xl">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
+                  <tr>
+                    <th className="py-2.5 px-4">ชื่อ-นามสกุล บุคลากร</th>
+                    <th className="py-2.5 px-4">ตำแหน่ง / สิทธิ์</th>
+                    <th className="py-2.5 px-4">สถานะ</th>
+                    <th className="py-2.5 px-4">วันและเวลาที่เปิดอ่าน</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {document?.readLogs?.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="py-6 text-center text-slate-400">
+                        ยังไม่มีผู้เปิดอ่านเอกสารนี้
+                      </td>
+                    </tr>
+                  ) : (
+                    document.readLogs.map((log) => (
+                      <tr key={log.id} className="hover:bg-slate-50/50">
+                        <td className="py-2.5 px-4 font-bold text-slate-800">{log.userName}</td>
+                        <td className="py-2.5 px-4 text-slate-600">{log.userRole}</td>
+                        <td className="py-2.5 px-4">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.2 rounded-full border border-emerald-200">
+                            <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span>เปิดอ่านแล้ว</span>
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-4 text-slate-500 font-mono">
+                          {formatThaiDate(log.readAt)}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

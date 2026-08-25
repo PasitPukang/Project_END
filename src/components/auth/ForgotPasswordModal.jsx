@@ -1,13 +1,12 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Mail, Clock, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Clock, KeyRound, AlertCircle, CheckCircle2, MailCheck } from 'lucide-react';
 import { forgotPasswordRequest, sendOtp, verifyOtp, resetPassword } from '@/lib/apiClient';
 
 export default function ForgotPasswordModal({ onClose, onSuccess }) {
   const [step, setStep] = useState(1); // 1: Email, 2: OTP, 3: Reset Password
   const [email, setEmail] = useState('');
   const [targetUserId, setTargetUserId] = useState(null);
-  const [demoCode, setDemoCode] = useState(null);
   const [otpCode, setOtpCode] = useState('');
   const [timeLeft, setTimeLeft] = useState(120);
   const [newPassword, setNewPassword] = useState('');
@@ -28,7 +27,6 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
     try {
       const result = await forgotPasswordRequest(email);
       setTargetUserId(result.userId);
-      if (result.demoCode) setDemoCode(result.demoCode);
       setTimeLeft(120);
       setStep(2);
     } catch (err) {
@@ -41,12 +39,11 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
   const handleResendOtp = async () => {
     if (!targetUserId) return;
     try {
-      const result = await sendOtp(targetUserId, 'FORGOT_PASSWORD');
-      if (result.demoCode) setDemoCode(result.demoCode);
+      await sendOtp(targetUserId, 'FORGOT_PASSWORD');
       setTimeLeft(120);
       setOtpCode('');
-      setMessage('ส่งรหัส OTP ใหม่ไปยัง Email เรียบร้อยแล้ว');
-      setTimeout(() => setMessage(''), 3000);
+      setMessage('ส่งรหัส OTP ใหม่ไปยัง Email ของคุณเรียบร้อยแล้ว');
+      setTimeout(() => setMessage(''), 4000);
     } catch (err) {
       setError(err.message);
     }
@@ -60,7 +57,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
       await verifyOtp(targetUserId, otpCode, 'FORGOT_PASSWORD');
       setStep(3);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'รหัส OTP ไม่ถูกต้องหรือหมดอายุ');
     } finally {
       setIsLoading(false);
     }
@@ -89,15 +86,14 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
       <div className="w-full max-w-md p-6 lg:p-8 bg-white rounded-xl border border-slate-200 shadow-xl">
-
         <div className="text-center mb-6">
           <div className="w-12 h-12 bg-[#006653]/10 text-[#006653] border border-[#006653]/20 rounded-full flex items-center justify-center mx-auto mb-3">
             <KeyRound className="w-6 h-6" />
           </div>
           <h3 className="text-xl font-bold text-slate-900">ระบบกู้คืนรหัสผ่าน (Reset Password)</h3>
           <p className="text-xs text-slate-500 mt-1">
-            {step === 1 && 'กรอก Email พนักงานเพื่อรับรหัส OTP 2 นาที'}
-            {step === 2 && `กรอก OTP ที่ส่งไปที่ ${email}`}
+            {step === 1 && 'กรอก Email เพื่อรับรหัส OTP 6 หลักเข้ากล่องจดหมาย'}
+            {step === 2 && `กรอก OTP 6 หลักที่ส่งไปที่ ${email}`}
             {step === 3 && 'กำหนด Password ใหม่สำหรับบัญชีของคุณ'}
           </p>
         </div>
@@ -125,9 +121,10 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="email"
-                  placeholder="เช่น admin@university.ac.th"
+                  placeholder="เช่น worawoot.s@kps.ku.ac.th"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
+                  required
                   className="w-full bg-white text-slate-800 text-sm pl-10 pr-4 py-2.5 rounded-lg border border-slate-400 focus:outline-none focus:border-[#006653]"
                 />
               </div>
@@ -155,12 +152,12 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
         {/* STEP 2: OTP Verification */}
         {step === 2 && (
           <form onSubmit={handleVerifyOtp} className="space-y-4">
-            {demoCode && (
-              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg text-center">
-                <span className="text-[11px] text-slate-500 block">🔑 OTP สำหรับทดสอบ:</span>
-                <span className="text-lg font-mono font-bold text-[#006653]">{demoCode}</span>
-              </div>
-            )}
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-2.5 flex items-center gap-2.5 text-left">
+              <MailCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+              <span className="text-xs text-emerald-800 font-medium">
+                ส่งรหัส OTP 6 หลักเข้ากล่องจดหมายอีเมลของคุณแล้ว
+              </span>
+            </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-600 text-center mb-1">กรอกรหัส OTP 6 หลัก</label>
@@ -169,6 +166,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
                 maxLength={6}
                 value={otpCode}
                 onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                required
                 className="w-full bg-white text-center font-mono text-xl font-bold tracking-[0.4em] text-[#006653] py-2.5 rounded-lg border border-slate-400 focus:outline-none focus:border-[#006653]"
               />
             </div>
@@ -184,7 +182,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
                 disabled={timeLeft > 0}
                 className={timeLeft > 0 ? 'text-slate-400' : 'text-[#0066cc] underline hover:text-[#004499]'}
               >
-                Resend OTP
+                ขอรหัสใหม่
               </button>
             </div>
 
@@ -198,7 +196,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
               </button>
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isLoading || otpCode.length < 6}
                 className="w-2/3 bg-[#00c885] hover:bg-[#00b074] active:bg-[#009b66] text-white py-2.5 rounded-lg text-xs font-bold disabled:opacity-60"
               >
                 {isLoading ? 'กำลังตรวจสอบ...' : 'ยืนยัน OTP'}
@@ -217,6 +215,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
                 placeholder="••••••••"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                required
                 className="w-full bg-white text-slate-800 text-sm px-4 py-2.5 rounded-lg border border-slate-400 focus:outline-none focus:border-[#006653]"
               />
             </div>
@@ -230,9 +229,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
             </button>
           </form>
         )}
-
       </div>
     </div>
   );
 }
-

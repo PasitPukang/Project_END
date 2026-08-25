@@ -157,17 +157,11 @@ export const verifyOtp = (userId, code, type = 'LOGIN_2FA') => {
   );
 
   if (otpIndex !== -1) {
-    // For ease of testing, accept code matching OR master demo code "123456"
-    if (otps[otpIndex].code === code || code === "123456") {
+    if (otps[otpIndex].code === code) {
       otps[otpIndex].isUsed = true;
       localStorage.setItem(KEYS.OTPS, JSON.stringify(otps));
       return { success: true };
     }
-  }
-
-  // Master code bypass check for demo/test mode
-  if (code === "123456") {
-    return { success: true };
   }
 
   return { success: false, error: 'รหัส OTP ไม่ถูกต้องหรือหมดอายุแล้ว (กรุณาขอรหัสใหม่)' };

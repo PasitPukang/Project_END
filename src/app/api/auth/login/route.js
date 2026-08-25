@@ -3,7 +3,6 @@
 
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
 import { INITIAL_USERS } from '@/lib/mockDatabase';
 
 export async function POST(request) {
@@ -47,14 +46,16 @@ export async function POST(request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: 'INCORRECT PASSWORD. PLEASE TRY AGAIN.' },
+        { error: 'รหัสผ่านหรือชื่อผู้ใช้ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง' },
         { status: 401 }
       );
     }
 
-    // บันทึก pending session (ยังไม่ complete เพราะต้องผ่าน OTP ก่อน)
-    const cookieStore = await cookies();
-    cookieStore.set('pending_user_id', user.id, {
+    // ส่งข้อมูล user กลับ (ไม่รวม password) พร้อมตั้ง Cookie
+    const { password: _, ...safeUser } = user;
+    const response = NextResponse.json({ user: safeUser });
+
+    response.cookies.set('pending_user_id', user.id, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
@@ -62,11 +63,9 @@ export async function POST(request) {
       path: '/',
     });
 
-    // ส่งข้อมูล user กลับ (ไม่รวม password)
-    const { password: _, ...safeUser } = user;
-    return NextResponse.json({ user: safeUser });
+    return response;
   } catch (error) {
     console.error('[LOGIN ERROR]', error);
-    return NextResponse.json({ error: 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'เกิดข้อผิดพลาดบนเซิร์ฟเวอร์' }, { status: 500 });
   }
 }

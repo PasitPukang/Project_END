@@ -11,7 +11,7 @@ import AdminView from '@/components/admin/AdminView';
 import Dashboard from '@/components/dashboard/Dashboard';
 import CreateDocumentModal from '@/components/documents/CreateDocumentModal';
 import DocumentDetailModal from '@/components/documents/DocumentDetailModal';
-import { getMe, logout as apiLogout } from '@/lib/apiClient';
+import { getMe, getDocuments, logout as apiLogout } from '@/lib/apiClient';
 
 export default function Home() {
   const [currentUser, setCurrentUser] = useState(null);
@@ -20,10 +20,12 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
 
   // Active Tab & View Navigation
-  const [activeTab, setActiveTab] = useState('CIRCULAR_LETTERS'); // CIRCULAR_LETTERS, DOCUMENTS, ADMIN
+  const [activeTab, setActiveTab] = useState('INBOX'); // INBOX, GLOBAL, DEPARTMENT, PERSONAL, SENT, ADMIN
   const [currentView, setCurrentView] = useState('HOME'); // HOME, CREATE_DOC, DOC_DETAIL, ADMIN
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
-  // Modals & State
+  // Documents & Notification State
+  const [documents, setDocuments] = useState([]);
   const [isForgotPassOpen, setIsForgotPassOpen] = useState(false);
   const [isUserMgmtOpen, setIsUserMgmtOpen] = useState(false);
   const [editDoc, setEditDoc] = useState(null);
@@ -37,6 +39,7 @@ export default function Home() {
         if (user) {
           setCurrentUser(user);
           setAuthStep('DASHBOARD');
+          loadDocsData(user);
         }
       } catch {
         // Default to LOGIN
@@ -45,6 +48,15 @@ export default function Home() {
       }
     })();
   }, []);
+
+  const loadDocsData = async (user) => {
+    try {
+      const docs = await getDocuments();
+      if (docs) setDocuments(docs);
+    } catch (err) {
+      console.error('Failed to load documents:', err);
+    }
+  };
 
   const handleLoginSubmit = (user) => {
     setPendingUser(user);
@@ -60,8 +72,10 @@ export default function Home() {
       try {
         const { user } = await getMe();
         setCurrentUser(user);
+        loadDocsData(user);
       } catch {
         setCurrentUser(pendingUser);
+        loadDocsData(pendingUser);
       }
       setAuthStep('DASHBOARD');
     }
@@ -71,6 +85,7 @@ export default function Home() {
     setCurrentUser(updatedUser);
     setPendingUser(null);
     setAuthStep('DASHBOARD');
+    loadDocsData(updatedUser);
   };
 
   const handleLogout = async () => {
@@ -84,18 +99,29 @@ export default function Home() {
     setAuthStep('LOGIN');
   };
 
+  // Calculate unread circulars for current user
+  const unreadDocs = documents.filter((doc) => {
+    if (!currentUser || !doc.readLogs) return false;
+    if (doc.authorId === currentUser.id) return false; // Ignore own documents
+    return !doc.readLogs.some((l) => l.userId === currentUser.id);
+  });
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="text-slate-500 text-sm font-bold animate-pulse">กำลังโหลดระบบ...</div>
+      <div className="min-h-screen bg-[#f4f7f6] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <div className="w-10 h-10 border-3 border-[#006653] border-t-transparent rounded-full animate-spin mx-auto"></div>
+          <div className="text-slate-600 text-sm font-bold animate-pulse">
+            กำลังเข้าสู่ระบบ FLAS E-Office...
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f4f6f8] text-slate-800 font-sans">
-      
-      {/* 1. LOGIN STEP */}
+    <div className="min-h-screen bg-[#f4f7f6] text-slate-800 font-sans">
+      {/* 1. LOGIN STEP (KU Inspired) */}
       {authStep === 'LOGIN' && (
         <LoginPage
           onLoginSubmit={handleLoginSubmit}
@@ -103,7 +129,7 @@ export default function Home() {
         />
       )}
 
-      {/* 2. OTP STEP */}
+      {/* 2. OTP STEP (2FA Real Email) */}
       {authStep === 'OTP' && pendingUser && (
         <OtpModal
           user={pendingUser}
@@ -122,7 +148,7 @@ export default function Home() {
       {/* 4. MAIN APPLICATION DASHBOARD LAYOUT */}
       {authStep === 'DASHBOARD' && currentUser && (
         <div className="flex min-h-screen">
-          {/* Left Dark Sidebar Navigation */}
+          {/* Left Collapsible Dark Green Sidebar */}
           <Sidebar
             activeTab={activeTab}
             setActiveTab={(tab) => {
@@ -136,22 +162,38 @@ export default function Home() {
               setCurrentView('CREATE_DOC');
             }}
             onLogout={handleLogout}
-            unreadCount={16}
+            unreadCount={unreadDocs.length}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           />
 
           {/* Right Main Content Area */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Top Header Banner */}
-            <Header currentUser={currentUser} />
+            {/* Top KU Portal Header */}
+            <Header
+              currentUser={currentUser}
+              onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+              isSidebarCollapsed={isSidebarCollapsed}
+              unreadDocs={unreadDocs}
+              onSelectDoc={(doc) => {
+                setSelectedDoc(doc);
+                setCurrentView('DOC_DETAIL');
+              }}
+            />
 
             {/* Dynamic View Content */}
             <main className="flex-1 overflow-y-auto">
               {currentView === 'HOME' && (
                 <Dashboard
                   currentUser={currentUser}
+                  activeTab={activeTab}
                   onOpenDocDetail={(doc) => {
                     setSelectedDoc(doc);
                     setCurrentView('DOC_DETAIL');
+                  }}
+                  onOpenCreateDoc={() => {
+                    setEditDoc(null);
+                    setCurrentView('CREATE_DOC');
                   }}
                 />
               )}
@@ -167,6 +209,7 @@ export default function Home() {
                   onDocSaved={() => {
                     setCurrentView('HOME');
                     setEditDoc(null);
+                    loadDocsData(currentUser);
                   }}
                 />
               )}
@@ -178,11 +221,17 @@ export default function Home() {
                   onClose={() => {
                     setCurrentView('HOME');
                     setSelectedDoc(null);
+                    loadDocsData(currentUser);
                   }}
                   onEditDoc={(docToEdit) => {
                     setSelectedDoc(null);
                     setEditDoc(docToEdit);
                     setCurrentView('CREATE_DOC');
+                  }}
+                  onDocDeleted={() => {
+                    setCurrentView('HOME');
+                    setSelectedDoc(null);
+                    loadDocsData(currentUser);
                   }}
                 />
               )}
@@ -208,14 +257,15 @@ export default function Home() {
         />
       )}
 
-      {/* MODAL: Admin Create User Popup */}
+      {/* MODAL: Admin Create User Popup (ปุ่มขอรับบัญชี) */}
       {isUserMgmtOpen && (
         <UserManagementModal
           onClose={() => setIsUserMgmtOpen(false)}
-          onUserCreated={() => {}}
+          onUserCreated={() => {
+            if (currentUser) loadDocsData(currentUser);
+          }}
         />
       )}
-
     </div>
   );
 }

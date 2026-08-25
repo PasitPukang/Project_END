@@ -56,6 +56,20 @@ export const INITIAL_USERS = [
     isFirstLogin: false,
     createdAt: "2026-01-03T08:00:00.000Z"
   },
+  {
+    id: "usr_admin_best",
+    employeeId: "EMP-D007",
+    name: "นายพสิษฐ์ ภูฆัง",
+    email: "pasit.pu@ku.th",
+    password: "Flas#AdminBest2026!",
+    role: "ADMIN",
+    tierLevel: 1,
+    positionTitle: "แอดมิน",
+    department: "IT",
+    division: "IT",
+    isFirstLogin: false,
+    createdAt: "2026-08-25T08:00:00.000Z"
+  },
 
   // ===== TIER 2: หัวหน้าภาควิชา / หัวหน้าสำนักงาน (Department & Division Heads) =====
   {
