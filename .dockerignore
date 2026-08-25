@@ -1,0 +1,16 @@
+Dockerfile
+.dockerignore
+node_modules
+npm-debug.log
+.next
+.git
+.gitignore
+.env
+.env*.local
+scratch
+.vscode
+.idea
+.loki
+README.md
+WORKFLOW.md
+DEPLOYMENT.md
