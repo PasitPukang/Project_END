@@ -51,7 +51,7 @@ export async function POST(request) {
 
     // ส่ง Real Email OTP
     const { sendOtpEmail } = await import('@/lib/emailService');
-    const emailResult = await sendOtpEmail(user.email, code, 'FORGOT_PASSWORD');
+    const emailResult = await sendOtpEmail(user.email, code, 'FORGOT_PASSWORD', user);
 
     return NextResponse.json({
       success: true,

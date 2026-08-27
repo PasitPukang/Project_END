@@ -87,7 +87,7 @@ export async function POST(request) {
 
     // ส่งรหัส OTP ไปยังอีเมลจริงของผู้ใช้ผ่าน Nodemailer
     const { sendOtpEmail } = await import('@/lib/emailService');
-    const emailResult = await sendOtpEmail(user.email, code, type);
+    const emailResult = await sendOtpEmail(user.email, code, type, user);
 
     const isSmtpConfigured = process.env.SMTP_USER && !process.env.SMTP_USER.includes('your-email');
 
@@ -105,7 +105,7 @@ export async function POST(request) {
       message: 'รหัส OTP ถูกสร้างและส่งไปยังอีเมลของคุณเรียบร้อยแล้ว',
       email: user.email.replace(/(.{2})(.*)(@.*)/, '$1***$3'),
       isSmtpConfigured,
-      devOtp: !isSmtpConfigured ? code : undefined, // ให้ความสะดวกขณะที่ยังไม่ได้ใส่รหัสผ่านแอป Gmail ใน .env
+      devOtp: process.env.NODE_ENV !== 'production' ? code : undefined,
     });
   } catch (error) {
     console.error('[OTP SEND ERROR]', error);

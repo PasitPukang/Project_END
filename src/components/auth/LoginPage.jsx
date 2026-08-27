@@ -22,7 +22,6 @@ export default function LoginPage({ onLoginSubmit, onOpenForgotPassword }) {
     setIsLoading(true);
     try {
       const { user } = await login(userId, password);
-      await sendOtp(user.id, 'LOGIN_2FA');
       onLoginSubmit(user);
     } catch (err) {
       setError(err.message || 'รหัสผ่านหรือชื่อผู้ใช้ไม่ถูกต้อง กรุณาลองใหม่อีกครั้ง');
@@ -95,7 +94,7 @@ export default function LoginPage({ onLoginSubmit, onOpenForgotPassword }) {
               </label>
               <input
                 type="text"
-                placeholder="เช่น dean.flas@kps.ku.ac.th หรือ EMP-D01"
+                placeholder="เช่น pasitpukang1234567@gmail.com หรือ EMP-D007"
                 value={userId}
                 onChange={(e) => setUserId(e.target.value)}
                 className="w-full bg-slate-50 text-slate-800 text-sm px-4 py-3 rounded-xl border border-slate-300 focus:outline-none focus:border-[#006653] focus:bg-white transition-all font-medium"
@@ -150,6 +149,82 @@ export default function LoginPage({ onLoginSubmit, onOpenForgotPassword }) {
             >
               {isLoading ? 'กำลังตรวจสอบข้อมูล...' : 'เข้าสู่ระบบ (LOGIN)'}
             </button>
+
+            {/* Quick Demo Accounts Helper (คลิกเพื่อกรอกอัตโนมัติ) */}
+            <div className="mt-5 pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                  <KeyRound className="w-3.5 h-3.5 text-[#006653]" />
+                  บัญชีทดสอบเริ่มต้น (คลิกเพื่อกรอกอัตโนมัติ):
+                </span>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {/* 1. Admin */}
+                <button
+                  type="button"
+                  onClick={() => { setUserId('EMP-D007'); setPassword('Flas#AdminBest2026!'); }}
+                  className="text-left p-2 rounded-xl bg-emerald-50/80 hover:bg-emerald-100 border border-emerald-300 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-bold text-[#006653] text-[11px]">นายพสิษฐ์ ภูฆัง (ADMIN ระบบ)</div>
+                    <div className="text-slate-500 font-mono text-[10px]">EMP-D007 • pasitpukang0@gmail.com</div>
+                  </div>
+                  <span className="text-[9px] font-bold bg-[#006653] text-white px-2 py-0.5 rounded-md">ADMIN</span>
+                </button>
+
+                {/* 2. Dean */}
+                <button
+                  type="button"
+                  onClick={() => { setUserId('EMP-D01'); setPassword('Flas#Dean2026!kps'); }}
+                  className="text-left p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-bold text-slate-800 text-[11px]">รศ.ดร. ธนกฤต (คณบดี)</div>
+                    <div className="text-slate-500 font-mono text-[10px]">EMP-D01 • pasitpukang1234567@gmail.com</div>
+                  </div>
+                  <span className="text-[9px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded-md">DEAN</span>
+                </button>
+
+                {/* 3. Dept Head */}
+                <button
+                  type="button"
+                  onClick={() => { setUserId('EMP-H01'); setPassword('Flas#HeadCS2026!kps'); }}
+                  className="text-left p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-bold text-slate-800 text-[11px]">ผศ.ดร. กิตติศักดิ์ (หัวหน้าภาค IT)</div>
+                    <div className="text-slate-500 font-mono text-[10px]">EMP-H01 • bestpasit2547@gmail.com</div>
+                  </div>
+                  <span className="text-[9px] font-bold bg-blue-600 text-white px-2 py-0.5 rounded-md">DEPT_HEAD</span>
+                </button>
+
+                {/* 4. Lecturer */}
+                <button
+                  type="button"
+                  onClick={() => { setUserId('EMP-L01'); setPassword('Flas#LcsWora2026!kps'); }}
+                  className="text-left p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-bold text-slate-800 text-[11px]">อ. วรวุฒิ (อาจารย์ประจำภาค)</div>
+                    <div className="text-slate-500 font-mono text-[10px]">EMP-L01 • bgee7242@gmail.com</div>
+                  </div>
+                  <span className="text-[9px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-md">LECTURER</span>
+                </button>
+
+                {/* 5. Support Staff */}
+                <button
+                  type="button"
+                  onClick={() => { setUserId('EMP-S01'); setPassword('Flas#StaffAdmin2026!'); }}
+                  className="text-left p-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <div className="font-bold text-slate-800 text-[11px]">คุณ ปรียาภรณ์ (บุคลากรสายสนับสนุน)</div>
+                    <div className="text-slate-500 font-mono text-[10px]">EMP-S01 • pasit.pu@ku.th</div>
+                  </div>
+                  <span className="text-[9px] font-bold bg-teal-600 text-white px-2 py-0.5 rounded-md">STAFF</span>
+                </button>
+              </div>
+            </div>
           </form>
         </div>
 

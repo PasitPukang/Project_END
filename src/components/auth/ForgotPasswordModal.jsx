@@ -121,7 +121,7 @@ export default function ForgotPasswordModal({ onClose, onSuccess }) {
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="email"
-                  placeholder="เช่น worawoot.s@kps.ku.ac.th"
+                  placeholder="เช่น pasitpukang1234567@gmail.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required

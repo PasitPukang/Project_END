@@ -13,12 +13,12 @@ export const FLAS_DIVISIONS = [
 ];
 
 export const INITIAL_USERS = [
-  // ===== TIER 1: ผู้บริหารระดับคณะ (Faculty Executive Board) =====
+  // 1. คณบดีคณะศิลปศาสตร์และวิทยาศาสตร์ (Executive Dean / ADMIN)
   {
     id: "usr_dean01",
     employeeId: "EMP-D01",
     name: "รศ.ดร. ธนกฤต ชลพิทักษ์วงศ์",
-    email: "dean.flas@kps.ku.ac.th",
+    email: "pasitpukang1234567@gmail.com",
     password: "Flas#Dean2026!kps",
     role: "ADMIN",
     tierLevel: 1,
@@ -28,55 +28,29 @@ export const INITIAL_USERS = [
     isFirstLogin: false,
     createdAt: "2026-01-01T08:00:00.000Z"
   },
-  {
-    id: "usr_vdean01",
-    employeeId: "EMP-D02",
-    name: "ผศ.ดร. อรพินท์ กิจพัฒนา",
-    email: "vdean.academic@kps.ku.ac.th",
-    password: "Flas#VdeanAcad2026!",
-    role: "ADMIN",
-    tierLevel: 1,
-    positionTitle: "รองคณบดีฝ่ายวิชาการและประกันคุณภาพ",
-    department: "สำนักงานคณบดี",
-    division: "สำนักงานคณบดี",
-    isFirstLogin: false,
-    createdAt: "2026-01-02T08:00:00.000Z"
-  },
-  {
-    id: "usr_vdean02",
-    employeeId: "EMP-D03",
-    name: "ดร. พงศกร บุญยเกียรติ",
-    email: "vdean.admin@kps.ku.ac.th",
-    password: "Flas#VdeanAdmin2026!",
-    role: "ADMIN",
-    tierLevel: 1,
-    positionTitle: "รองคณบดีฝ่ายบริหารและวางแผน",
-    department: "สำนักงานคณบดี",
-    division: "สำนักงานคณบดี",
-    isFirstLogin: false,
-    createdAt: "2026-01-03T08:00:00.000Z"
-  },
+
+  // 2. ผู้ดูแลระบบ IT (Admin เพียงเมลเดียว)
   {
     id: "usr_admin_best",
     employeeId: "EMP-D007",
     name: "นายพสิษฐ์ ภูฆัง",
-    email: "pasit.pu@ku.th",
+    email: "pasitpukang0@gmail.com",
     password: "Flas#AdminBest2026!",
     role: "ADMIN",
     tierLevel: 1,
-    positionTitle: "แอดมิน",
-    department: "IT",
-    division: "IT",
+    positionTitle: "ผู้ดูแลระบบ IT (Admin)",
+    department: "สำนักงานคณบดี (ฝ่าย IT)",
+    division: "สำนักงานคณบดี",
     isFirstLogin: false,
     createdAt: "2026-08-25T08:00:00.000Z"
   },
 
-  // ===== TIER 2: หัวหน้าภาควิชา / หัวหน้าสำนักงาน (Department & Division Heads) =====
+  // 3. หัวหน้าภาควิชาวิทยาการคอมพิวเตอร์และ IT (Department Head)
   {
     id: "usr_head_cs",
     employeeId: "EMP-H01",
     name: "ผศ.ดร. กิตติศักดิ์ ศรีวิวัฒน์",
-    email: "head.cs@kps.ku.ac.th",
+    email: "bestpasit2547@gmail.com",
     password: "Flas#HeadCS2026!kps",
     role: "DEPT_HEAD",
     tierLevel: 2,
@@ -86,41 +60,13 @@ export const INITIAL_USERS = [
     isFirstLogin: false,
     createdAt: "2026-01-10T08:30:00.000Z"
   },
-  {
-    id: "usr_head_sci",
-    employeeId: "EMP-H02",
-    name: "รศ.ดร. สุวรรณี วงศ์ปัญญา",
-    email: "head.sci@kps.ku.ac.th",
-    password: "Flas#HeadSci2026!kps",
-    role: "DEPT_HEAD",
-    tierLevel: 2,
-    positionTitle: "หัวหน้าภาควิชาวิทยาศาสตร์กายภาพและสิ่งแวดล้อม",
-    department: "ภาควิชาวิทยาศาสตร์กายภาพและสิ่งแวดล้อม",
-    division: "ภาควิชาวิทยาศาสตร์กายภาพและสิ่งแวดล้อม",
-    isFirstLogin: false,
-    createdAt: "2026-01-11T08:30:00.000Z"
-  },
-  {
-    id: "usr_head_office",
-    employeeId: "EMP-H03",
-    name: "คุณ ภานุวัฒน์ ประเสริฐสุข",
-    email: "head.office@kps.ku.ac.th",
-    password: "Flas#HeadOffice2026!",
-    role: "DEPT_HEAD",
-    tierLevel: 2,
-    positionTitle: "หัวหน้าสำนักงานเลขานุการคณะ",
-    department: "สำนักงานเลขานุการคณะ",
-    division: "สำนักงานเลขานุการคณะ",
-    isFirstLogin: false,
-    createdAt: "2026-01-12T08:30:00.000Z"
-  },
 
-  // ===== TIER 3: อาจารย์ประจำภาควิชา (Lecturers & Academic Staff) =====
+  // 4. อาจารย์ประจำภาควิชา (Lecturer)
   {
     id: "usr_lec_cs01",
     employeeId: "EMP-L01",
     name: "อ. วรวุฒิ สุวรรณโชติ",
-    email: "worawoot.s@kps.ku.ac.th",
+    email: "bgee7242@gmail.com",
     password: "Flas#LcsWora2026!kps",
     role: "LECTURER",
     tierLevel: 3,
@@ -130,41 +76,13 @@ export const INITIAL_USERS = [
     isFirstLogin: false,
     createdAt: "2026-01-15T09:00:00.000Z"
   },
-  {
-    id: "usr_lec_cs02",
-    employeeId: "EMP-L02",
-    name: "ดร. ณัฐพงษ์ ซอฟต์แวร์อนันต์",
-    email: "nattapong.a@kps.ku.ac.th",
-    password: "Flas#LitNatta2026!kps",
-    role: "LECTURER",
-    tierLevel: 3,
-    positionTitle: "อาจารย์ประจำสาขาวิชาเทคโนโลยีสารสนเทศ",
-    department: "ภาควิชาวิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ",
-    division: "ภาควิชาวิทยาการคอมพิวเตอร์และเทคโนโลยีสารสนเทศ",
-    isFirstLogin: false,
-    createdAt: "2026-02-01T10:00:00.000Z"
-  },
-  {
-    id: "usr_lec_chem",
-    employeeId: "EMP-L03",
-    name: "ดร. พรชัย เคมีพัฒนา",
-    email: "pornchai.p@kps.ku.ac.th",
-    password: "Flas#LsciPorn2026!kps",
-    role: "LECTURER",
-    tierLevel: 3,
-    positionTitle: "อาจารย์ประจำภาควิชาวิทยาศาสตร์กายภาพ",
-    department: "ภาควิชาวิทยาศาสตร์กายภาพและสิ่งแวดล้อม",
-    division: "ภาควิชาวิทยาศาสตร์กายภาพและสิ่งแวดล้อม",
-    isFirstLogin: false,
-    createdAt: "2026-02-02T10:00:00.000Z"
-  },
 
-  // ===== TIER 4: บุคลากรสายสนับสนุน (Support Staff) =====
+  // 5. บุคลากรสายสนับสนุน (Support Staff)
   {
     id: "usr_stf_admin",
     employeeId: "EMP-S01",
     name: "คุณ ปรียาภรณ์ สารบรรณดี",
-    email: "staff.admin@kps.ku.ac.th",
+    email: "pasit.pu@ku.th",
     password: "Flas#StaffAdmin2026!",
     role: "STAFF",
     tierLevel: 4,
@@ -173,34 +91,6 @@ export const INITIAL_USERS = [
     division: "สำนักงานเลขานุการคณะ",
     isFirstLogin: false,
     createdAt: "2026-02-05T11:00:00.000Z"
-  },
-  {
-    id: "usr_stf_finance",
-    employeeId: "EMP-S02",
-    name: "คุณ สมศักดิ์ การเงินรัตน์",
-    email: "staff.finance@kps.ku.ac.th",
-    password: "Flas#StaffFin2026!",
-    role: "STAFF",
-    tierLevel: 4,
-    positionTitle: "เจ้าหน้าที่งานการเงินและพัสดุ",
-    department: "สำนักงานเลขานุการคณะ",
-    division: "สำนักงานเลขานุการคณะ",
-    isFirstLogin: false,
-    createdAt: "2026-02-06T11:00:00.000Z"
-  },
-  {
-    id: "usr_stf_academic",
-    employeeId: "EMP-S03",
-    name: "คุณ ศิริพร บริการศึกษา",
-    email: "staff.academic@kps.ku.ac.th",
-    password: "Flas#StaffAcad2026!",
-    role: "STAFF",
-    tierLevel: 4,
-    positionTitle: "เจ้าหน้าที่งานบริการการศึกษา",
-    department: "สำนักงานเลขานุการคณะ",
-    division: "สำนักงานเลขานุการคณะ",
-    isFirstLogin: false,
-    createdAt: "2026-02-07T11:00:00.000Z"
   }
 ];
 

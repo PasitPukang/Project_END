@@ -83,12 +83,38 @@ export async function POST(request) {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const exists = localUsersStore.some((u) => u.email.toLowerCase() === cleanEmail);
-    if (exists) {
-      return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานในระบบแล้ว' }, { status: 409 });
+
+    // 1. ตรวจสอบว่ามีอีเมลนี้ในระบบแล้วหรือไม่ (ป้องกันอีเมลซ้ำ)
+    let existingUser = null;
+    try {
+      existingUser = await prisma.user.findFirst({
+        where: {
+          email: { equals: cleanEmail, mode: 'insensitive' },
+        },
+      });
+    } catch (err) {
+      existingUser = localUsersStore.find((u) => u.email.toLowerCase() === cleanEmail);
     }
 
-    const employeeId = generateEmployeeId();
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          error: `อีเมล "${cleanEmail}" นี้มีผู้ใช้งานในระบบแล้ว (${existingUser.name} - ${existingUser.employeeId}) ไม่สามารถใช้อีเมลซ้ำได้ กรุณาใช้อีเมลอื่น`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // 2. สร้าง employeeId แบบไม่ซ้ำ
+    let employeeId = generateEmployeeId();
+    try {
+      let idCollision = await prisma.user.findUnique({ where: { employeeId } });
+      while (idCollision) {
+        employeeId = generateEmployeeId();
+        idCollision = await prisma.user.findUnique({ where: { employeeId } });
+      }
+    } catch (e) {}
+
     const password = generatePassword();
 
     let newUser = {
@@ -141,7 +167,10 @@ export async function POST(request) {
     let emailResult = { success: false };
     try {
       const { sendEmployeeCredentialsEmail } = await import('@/lib/emailService');
-      emailResult = await sendEmployeeCredentialsEmail(newUser.email, newUser.name, employeeId, password);
+      emailResult = await sendEmployeeCredentialsEmail(newUser.email, newUser.name, employeeId, password, {
+        role: newUser.role,
+        department: newUser.department,
+      });
     } catch (err) {}
 
     const { password: _, ...safeUser } = newUser;

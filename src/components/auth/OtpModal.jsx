@@ -13,9 +13,11 @@ export default function OtpModal({ user, onVerifySuccess }) {
   const [sentMessage, setSentMessage] = useState('ระบบได้ส่งรหัส OTP ไปยังอีเมลของคุณแล้ว');
   const [devCode, setDevCode] = useState(null);
   const inputRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
+  const hasRequestedRef = useRef(false);
 
   useEffect(() => {
-    if (user) {
+    if (user && !hasRequestedRef.current) {
+      hasRequestedRef.current = true;
       requestOtp();
     }
   }, [user]);
@@ -113,7 +115,7 @@ export default function OtpModal({ user, onVerifySuccess }) {
   };
 
   return (
-    <StepWizardLayout currentStep={2}>
+    <StepWizardLayout currentStep={2} isFirstLogin={user?.isFirstLogin}>
       <div>
         {/* Title Header */}
         <h3 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight mb-2">
@@ -134,27 +136,27 @@ export default function OtpModal({ user, onVerifySuccess }) {
           </div>
         </div>
 
-        {/* Development Helper Badge when SMTP not yet filled in .env */}
+        {/* Development Helper Badge */}
         {devCode && (
-          <div className="mb-4 bg-amber-50 border border-amber-300/80 rounded-xl p-3 text-left space-y-1.5 animate-slide-up">
+          <div className="mb-4 bg-emerald-50 border border-emerald-300/80 rounded-xl p-3 text-left space-y-1.5 animate-slide-up">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
-                <KeyRound className="w-4 h-4 text-amber-700" />
-                <span>รหัส OTP ชั่วคราว (ระหว่างรอตั้งค่า Gmail SMTP ใน .env):</span>
+              <span className="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+                <KeyRound className="w-4 h-4 text-emerald-700" />
+                <span>รหัส OTP ทดสอบ (หรือดูจากอีเมลจริงของคุณ):</span>
               </span>
               <button
                 type="button"
                 onClick={handleAutoFillDev}
-                className="text-[11px] font-bold text-[#006653] hover:underline cursor-pointer bg-white px-2 py-0.5 rounded border border-emerald-200"
+                className="text-[11px] font-bold text-[#006653] hover:underline cursor-pointer bg-white px-2.5 py-1 rounded-lg border border-emerald-300 shadow-xs"
               >
-                กรอกอัตโนมัติ ⚡
+                คลิกเพื่อกรอกอัตโนมัติ ⚡
               </button>
             </div>
-            <div className="font-mono text-base font-extrabold text-[#006653] tracking-widest bg-white p-1.5 rounded-lg border border-amber-200 text-center">
+            <div className="font-mono text-lg font-extrabold text-[#006653] tracking-widest bg-white p-1.5 rounded-lg border border-emerald-200 text-center">
               {devCode}
             </div>
             <p className="text-[10px] text-slate-500">
-              💡 เพื่อให้อีเมลเด้งเข้ากล่องข้อความจริง สามารถนำ <strong>Gmail + App Password (16 หลัก)</strong> มาใส่ในไฟล์ <code className="bg-slate-200 px-1 rounded">.env</code> ได้ตลอดเวลาครับ
+              📧 ระบบได้ส่งอีเมลรหัสนี้ไปยังกล่องจดหมายจริงของคุณเรียบร้อยแล้วเช่นกัน
             </p>
           </div>
         )}

@@ -2,12 +2,17 @@
 import React from 'react';
 import { Lock } from 'lucide-react';
 
-export default function StepWizardLayout({ currentStep, children }) {
-  const steps = [
-    { number: 1, label: 'Identity' },
-    { number: 2, label: 'ยืนยันตัวตน' },
-    { number: 3, label: 'เปลี่ยนรหัสผ่าน' },
-  ];
+export default function StepWizardLayout({ currentStep, isFirstLogin = true, children }) {
+  const steps = isFirstLogin
+    ? [
+        { number: 1, label: 'Identity' },
+        { number: 2, label: 'ยืนยันตัวตน (2FA)' },
+        { number: 3, label: 'เปลี่ยนรหัสผ่าน' },
+      ]
+    : [
+        { number: 1, label: 'Identity' },
+        { number: 2, label: 'ยืนยันตัวตน (2FA)' },
+      ];
 
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans text-slate-800">

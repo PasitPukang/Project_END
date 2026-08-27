@@ -37,9 +37,14 @@ export default function Home() {
       try {
         const { user } = await getMe();
         if (user) {
-          setCurrentUser(user);
-          setAuthStep('DASHBOARD');
-          loadDocsData(user);
+          if (user.isFirstLogin) {
+            setPendingUser(user);
+            setAuthStep('FIRST_TIME_PASS');
+          } else {
+            setCurrentUser(user);
+            setAuthStep('DASHBOARD');
+            loadDocsData(user);
+          }
         }
       } catch {
         // Default to LOGIN
@@ -66,17 +71,21 @@ export default function Home() {
   const handleOtpVerified = async () => {
     if (!pendingUser) return;
 
-    if (pendingUser.isFirstLogin) {
+    let freshUser = pendingUser;
+    try {
+      const { user } = await getMe();
+      if (user) freshUser = user;
+    } catch (e) {}
+
+    // 1. ถ้าไม่เคยเปลี่ยนรหัสผ่าน (isFirstLogin: true) -> ยืนยันอีเมลแล้ว ต้องเปลี่ยนรหัสผ่านตามลำดับ (Step 3)
+    if (freshUser.isFirstLogin) {
+      setPendingUser(freshUser);
       setAuthStep('FIRST_TIME_PASS');
     } else {
-      try {
-        const { user } = await getMe();
-        setCurrentUser(user);
-        loadDocsData(user);
-      } catch {
-        setCurrentUser(pendingUser);
-        loadDocsData(pendingUser);
-      }
+      // 2. ถ้าเคยเปลี่ยนรหัสผ่านแล้ว (isFirstLogin: false) -> ยืนยันแค่รหัสสองชั้นพอ ไม่ต้องเปลี่ยนรหัสผ่าน เข้าสู่ Dashboard ทันที
+      setCurrentUser(freshUser);
+      setPendingUser(null);
+      loadDocsData(freshUser);
       setAuthStep('DASHBOARD');
     }
   };

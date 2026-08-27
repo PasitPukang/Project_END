@@ -109,6 +109,13 @@ export async function createUser(userData) {
   });
 }
 
+/** ลบ user */
+export async function deleteUser(id) {
+  return request(`/api/users/${id}`, {
+    method: 'DELETE',
+  });
+}
+
 // ========================
 // DOCUMENTS
 // ========================
